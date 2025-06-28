@@ -1,12 +1,11 @@
 package id.ac.stis.pbo.demo1;
 
-import id.ac.stis.pbo.demo1.database.DatabaseManager;
+import id.ac.stis.pbo.demo1.data.MySQLDataStore;
 import id.ac.stis.pbo.demo1.models.Employee;
 import id.ac.stis.pbo.demo1.server.GaweServer;
 import id.ac.stis.pbo.demo1.ui.SupervisorDashboard;
 import id.ac.stis.pbo.demo1.ui.ManagerDashboard;
 import id.ac.stis.pbo.demo1.ui.EmployeeDashboard;
-import id.ac.stis.pbo.demo1.data.DataStore;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -21,20 +20,30 @@ import javafx.stage.Stage;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Enhanced HelloApplication with multi-threading support and complete role system
+ * Enhanced HelloApplication with MySQL database integration
  */
 public class HelloApplication extends Application {
-    private DatabaseManager dbManager;
     private GaweServer server;
 
     @Override
     public void init() {
-        // Initialize database
-        dbManager = new DatabaseManager();
-        dbManager.initializeDatabase();
-
-        // Initialize DataStore with sample data
-        DataStore.initialize();
+        // Initialize MySQL DataStore with sample data
+        try {
+            MySQLDataStore.initialize();
+            logger.info("MySQL DataStore initialized successfully");
+        } catch (Exception e) {
+            logger.severe("Failed to initialize MySQL DataStore: " + e.getMessage());
+            // Show error dialog and exit
+            Platform.runLater(() -> {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Database Connection Error");
+                alert.setHeaderText("Failed to connect to MySQL database");
+                alert.setContentText("Please ensure MySQL is running and the database configuration is correct.\n\nError: " + e.getMessage());
+                alert.showAndWait();
+                Platform.exit();
+            });
+            return;
+        }
 
         // Start server in background thread
         CompletableFuture.runAsync(() -> {
@@ -47,6 +56,8 @@ public class HelloApplication extends Application {
         });
     }
 
+    private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(HelloApplication.class.getName());
+
     @Override
     public void start(Stage stage) {
         BorderPane root = new BorderPane();
@@ -58,7 +69,7 @@ public class HelloApplication extends Application {
 
         Scene scene = new Scene(root, 800, 600);
         stage.setScene(scene);
-        stage.setTitle("GAWE - Employee Management System");
+        stage.setTitle("GAWE - Employee Management System (MySQL)");
         stage.setOnCloseRequest(e -> {
             if (server != null) {
                 try {
@@ -67,6 +78,7 @@ public class HelloApplication extends Application {
                     System.err.println("Error stopping server: " + ex.getMessage());
                 }
             }
+            MySQLDataStore.close();
             Platform.exit();
         });
         stage.show();
@@ -88,9 +100,14 @@ public class HelloApplication extends Application {
         titleLabel.setFont(Font.font("Segoe UI", FontWeight.BOLD, 36));
         titleLabel.setTextFill(Color.web("#2c3e50"));
 
-        Label subtitleLabel = new Label("Employee Management System");
+        Label subtitleLabel = new Label("Employee Management System (MySQL)");
         subtitleLabel.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 14));
         subtitleLabel.setTextFill(Color.web("#7f8c8d"));
+
+        // Database status indicator
+        Label dbStatusLabel = new Label("✅ Connected to MySQL Database");
+        dbStatusLabel.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 12));
+        dbStatusLabel.setTextFill(Color.web("#27ae60"));
 
         // Login form
         GridPane formGrid = new GridPane();
@@ -186,7 +203,7 @@ public class HelloApplication extends Application {
 
         demoInfo.getChildren().addAll(demoCredentials);
 
-        loginContainer.getChildren().addAll(titleLabel, subtitleLabel, formGrid, loginBtn, demoLabel, demoInfo);
+        loginContainer.getChildren().addAll(titleLabel, subtitleLabel, dbStatusLabel, formGrid, loginBtn, demoLabel, demoInfo);
         return loginContainer;
     }
 
@@ -196,17 +213,22 @@ public class HelloApplication extends Application {
             return;
         }
 
-        // Authenticate user using DataStore
-        Employee employee = DataStore.authenticateUser(employeeId, password);
+        try {
+            // Authenticate user using MySQL DataStore
+            Employee employee = MySQLDataStore.authenticateUser(employeeId, password);
 
-        if (employee != null) {
-            // Close login window
-            primaryStage.close();
+            if (employee != null) {
+                // Close login window
+                primaryStage.close();
 
-            // Open appropriate dashboard based on role
-            openDashboard(employee);
-        } else {
-            showAlert(Alert.AlertType.ERROR, "Login Failed", "Invalid Employee ID or Password.");
+                // Open appropriate dashboard based on role
+                openDashboard(employee);
+            } else {
+                showAlert(Alert.AlertType.ERROR, "Login Failed", "Invalid Employee ID or Password.");
+            }
+        } catch (Exception e) {
+            showAlert(Alert.AlertType.ERROR, "Database Error", "Failed to authenticate user: " + e.getMessage());
+            logger.severe("Authentication error: " + e.getMessage());
         }
     }
 
@@ -261,9 +283,7 @@ public class HelloApplication extends Application {
                 System.err.println("Error stopping server: " + e.getMessage());
             }
         }
-        if (dbManager != null) {
-            dbManager.close();
-        }
+        MySQLDataStore.close();
     }
 
     public static void main(String[] args) {

@@ -1,6 +1,6 @@
 package id.ac.stis.pbo.demo1.server;
 
-import id.ac.stis.pbo.demo1.data.DataStore;
+import id.ac.stis.pbo.demo1.data.MySQLDataStore;
 import id.ac.stis.pbo.demo1.models.*;
 import com.google.gson.Gson;
 import java.io.*;
@@ -8,7 +8,7 @@ import java.net.Socket;
 import java.util.logging.Logger;
 
 /**
- * Handles individual client connections
+ * Handles individual client connections with MySQL integration
  */
 public class ClientHandler implements Runnable {
     private static final Logger logger = Logger.getLogger(ClientHandler.class.getName());
@@ -55,37 +55,44 @@ public class ClientHandler implements Runnable {
     }
 
     private ServerResponse handleRequest(ServerRequest request) {
-        switch (request.getAction()) {
-            case "login":
-                return handleLogin(request);
-            case "getEmployees":
-                return handleGetEmployees(request);
-            case "updateKPI":
-                return handleUpdateKPI(request);
-            case "uploadReport":
-                return handleUploadReport(request);
-            case "evaluateEmployee":
-                return handleEvaluateEmployee(request);
-            case "getAttendance":
-                return handleGetAttendance(request);
-            case "saveAttendance":
-                return handleSaveAttendance(request);
-            case "getDashboardStats":
-                return handleGetDashboardStats(request);
-            case "getMeetings":
-                return handleGetMeetings(request);
-            case "saveMeeting":
-                return handleSaveMeeting(request);
-            case "getLeaveRequests":
-                return handleGetLeaveRequests(request);
-            case "saveLeaveRequest":
-                return handleSaveLeaveRequest(request);
-            case "approveLeaveRequest":
-                return handleApproveLeaveRequest(request);
-            case "getSalaryHistory":
-                return handleGetSalaryHistory(request);
-            default:
-                return new ServerResponse("error", "Unknown action: " + request.getAction());
+        try {
+            switch (request.getAction()) {
+                case "login":
+                    return handleLogin(request);
+                case "getEmployees":
+                    return handleGetEmployees(request);
+                case "updateKPI":
+                    return handleUpdateKPI(request);
+                case "uploadReport":
+                    return handleUploadReport(request);
+                case "evaluateEmployee":
+                    return handleEvaluateEmployee(request);
+                case "getAttendance":
+                    return handleGetAttendance(request);
+                case "saveAttendance":
+                    return handleSaveAttendance(request);
+                case "getDashboardStats":
+                    return handleGetDashboardStats(request);
+                case "getMeetings":
+                    return handleGetMeetings(request);
+                case "saveMeeting":
+                    return handleSaveMeeting(request);
+                case "getLeaveRequests":
+                    return handleGetLeaveRequests(request);
+                case "saveLeaveRequest":
+                    return handleSaveLeaveRequest(request);
+                case "approveLeaveRequest":
+                    return handleApproveLeaveRequest(request);
+                case "getSalaryHistory":
+                    return handleGetSalaryHistory(request);
+                case "saveMonthlyEvaluation":
+                    return handleSaveMonthlyEvaluation(request);
+                default:
+                    return new ServerResponse("error", "Unknown action: " + request.getAction());
+            }
+        } catch (Exception e) {
+            logger.severe("Error handling request: " + e.getMessage());
+            return new ServerResponse("error", "Server error: " + e.getMessage());
         }
     }
 
@@ -94,7 +101,7 @@ public class ClientHandler implements Runnable {
             String employeeId = (String) request.getData().get("employeeId");
             String password = (String) request.getData().get("password");
             
-            Employee employee = DataStore.authenticateUser(employeeId, password);
+            Employee employee = MySQLDataStore.authenticateUser(employeeId, password);
             if (employee != null) {
                 return new ServerResponse("success", "Login successful", employee);
             } else {
@@ -107,7 +114,7 @@ public class ClientHandler implements Runnable {
 
     private ServerResponse handleGetEmployees(ServerRequest request) {
         try {
-            return new ServerResponse("success", "Employees retrieved", DataStore.getAllEmployees());
+            return new ServerResponse("success", "Employees retrieved", MySQLDataStore.getAllEmployees());
         } catch (Exception e) {
             return new ServerResponse("error", "Failed to get employees: " + e.getMessage());
         }
@@ -121,7 +128,7 @@ public class ClientHandler implements Runnable {
             double score = (Double) request.getData().get("score");
             String managerId = request.getUserId();
             
-            boolean success = DataStore.saveKPI(divisi, bulan, tahun, score, managerId);
+            boolean success = MySQLDataStore.saveKPI(divisi, bulan, tahun, score, managerId);
             if (success) {
                 return new ServerResponse("success", "KPI updated successfully");
             } else {
@@ -140,7 +147,7 @@ public class ClientHandler implements Runnable {
             int tahun = ((Double) request.getData().get("tahun")).intValue();
             String filePath = (String) request.getData().get("filePath");
             
-            boolean success = DataStore.saveReport(supervisorId, divisi, bulan, tahun, filePath);
+            boolean success = MySQLDataStore.saveReport(supervisorId, divisi, bulan, tahun, filePath);
             if (success) {
                 return new ServerResponse("success", "Report uploaded successfully");
             } else {
@@ -160,7 +167,7 @@ public class ClientHandler implements Runnable {
             double overallRating = (Double) request.getData().get("overallRating");
             String comments = (String) request.getData().get("comments");
             
-            boolean success = DataStore.saveEmployeeEvaluation(employeeId, supervisorId, 
+            boolean success = MySQLDataStore.saveEmployeeEvaluation(employeeId, supervisorId, 
                                                              punctualityScore, attendanceScore, 
                                                              overallRating, comments);
             if (success) {
@@ -173,11 +180,37 @@ public class ClientHandler implements Runnable {
         }
     }
 
+    private ServerResponse handleSaveMonthlyEvaluation(ServerRequest request) {
+        try {
+            String employeeId = (String) request.getData().get("employeeId");
+            String supervisorId = request.getUserId();
+            int month = ((Double) request.getData().get("month")).intValue();
+            int year = ((Double) request.getData().get("year")).intValue();
+            double punctualityScore = (Double) request.getData().get("punctualityScore");
+            double attendanceScore = (Double) request.getData().get("attendanceScore");
+            double productivityScore = (Double) request.getData().get("productivityScore");
+            double overallRating = (Double) request.getData().get("overallRating");
+            String comments = (String) request.getData().get("comments");
+            
+            boolean success = MySQLDataStore.saveMonthlyEmployeeEvaluation(employeeId, supervisorId, 
+                                                                    month, year, punctualityScore, 
+                                                                    attendanceScore, productivityScore, 
+                                                                    overallRating, comments);
+            if (success) {
+                return new ServerResponse("success", "Monthly evaluation saved successfully");
+            } else {
+                return new ServerResponse("error", "Failed to save monthly evaluation");
+            }
+        } catch (Exception e) {
+            return new ServerResponse("error", "Monthly evaluation failed: " + e.getMessage());
+        }
+    }
+
     private ServerResponse handleGetAttendance(ServerRequest request) {
         try {
             String employeeId = (String) request.getData().get("employeeId");
             return new ServerResponse("success", "Attendance retrieved", 
-                                    DataStore.getAttendanceByEmployee(employeeId));
+                                    MySQLDataStore.getAttendanceByEmployee(employeeId));
         } catch (Exception e) {
             return new ServerResponse("error", "Failed to get attendance: " + e.getMessage());
         }
@@ -190,7 +223,7 @@ public class ClientHandler implements Runnable {
             String jamMasuk = (String) request.getData().get("jamMasuk");
             String jamKeluar = (String) request.getData().get("jamKeluar");
             
-            boolean success = DataStore.saveAttendance(employeeId, new java.util.Date(), 
+            boolean success = MySQLDataStore.saveAttendance(employeeId, new java.util.Date(), 
                                                      jamMasuk, jamKeluar, status);
             if (success) {
                 return new ServerResponse("success", "Attendance saved successfully");
@@ -205,7 +238,7 @@ public class ClientHandler implements Runnable {
     private ServerResponse handleGetDashboardStats(ServerRequest request) {
         try {
             return new ServerResponse("success", "Dashboard stats retrieved", 
-                                    DataStore.getDashboardStats());
+                                    MySQLDataStore.getDashboardStats());
         } catch (Exception e) {
             return new ServerResponse("error", "Failed to get dashboard stats: " + e.getMessage());
         }
@@ -215,7 +248,7 @@ public class ClientHandler implements Runnable {
         try {
             String employeeId = request.getUserId();
             return new ServerResponse("success", "Meetings retrieved", 
-                                    DataStore.getMeetingsByEmployee(employeeId));
+                                    MySQLDataStore.getMeetingsByEmployee(employeeId));
         } catch (Exception e) {
             return new ServerResponse("error", "Failed to get meetings: " + e.getMessage());
         }
@@ -233,7 +266,7 @@ public class ClientHandler implements Runnable {
             @SuppressWarnings("unchecked")
             java.util.List<String> participantIds = (java.util.List<String>) request.getData().get("participantIds");
             
-            boolean success = DataStore.saveMeeting(title, description, tanggal, waktuMulai, 
+            boolean success = MySQLDataStore.saveMeeting(title, description, tanggal, waktuMulai, 
                                                   waktuSelesai, lokasi, organizerId, participantIds);
             if (success) {
                 return new ServerResponse("success", "Meeting saved successfully");
@@ -249,7 +282,7 @@ public class ClientHandler implements Runnable {
         try {
             String employeeId = request.getUserId();
             return new ServerResponse("success", "Leave requests retrieved", 
-                                    DataStore.getLeaveRequestsByEmployee(employeeId));
+                                    MySQLDataStore.getLeaveRequestsByEmployee(employeeId));
         } catch (Exception e) {
             return new ServerResponse("error", "Failed to get leave requests: " + e.getMessage());
         }
@@ -263,7 +296,7 @@ public class ClientHandler implements Runnable {
             java.util.Date endDate = new java.util.Date((Long) request.getData().get("endDate"));
             String reason = (String) request.getData().get("reason");
             
-            boolean success = DataStore.saveLeaveRequest(employeeId, leaveType, startDate, endDate, reason);
+            boolean success = MySQLDataStore.saveLeaveRequest(employeeId, leaveType, startDate, endDate, reason);
             if (success) {
                 return new ServerResponse("success", "Leave request submitted successfully");
             } else {
@@ -283,9 +316,9 @@ public class ClientHandler implements Runnable {
             
             boolean success;
             if ("approve".equals(action)) {
-                success = DataStore.approveLeaveRequest(leaveRequestId, approverId, notes);
+                success = MySQLDataStore.approveLeaveRequest(leaveRequestId, approverId, notes);
             } else {
-                success = DataStore.rejectLeaveRequest(leaveRequestId, approverId, notes);
+                success = MySQLDataStore.rejectLeaveRequest(leaveRequestId, approverId, notes);
             }
             
             if (success) {
@@ -302,7 +335,7 @@ public class ClientHandler implements Runnable {
         try {
             String employeeId = request.getUserId();
             return new ServerResponse("success", "Salary history retrieved", 
-                                    DataStore.getSalaryHistoryByEmployee(employeeId));
+                                    MySQLDataStore.getSalaryHistoryByEmployee(employeeId));
         } catch (Exception e) {
             return new ServerResponse("error", "Failed to get salary history: " + e.getMessage());
         }

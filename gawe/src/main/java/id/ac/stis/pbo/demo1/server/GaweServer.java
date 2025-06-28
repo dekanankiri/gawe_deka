@@ -1,6 +1,6 @@
 package id.ac.stis.pbo.demo1.server;
 
-import id.ac.stis.pbo.demo1.data.DataStore;
+import id.ac.stis.pbo.demo1.data.MySQLDataStore;
 import com.google.gson.Gson;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -10,7 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
 /**
- * Multi-threaded server for GAWE application
+ * Multi-threaded server for GAWE application with MySQL integration
  * Handles multiple client connections simultaneously
  */
 public class GaweServer {
@@ -30,13 +30,13 @@ public class GaweServer {
 
     public void start() {
         try {
-            // Initialize data store
-            DataStore.initialize();
+            // Initialize MySQL data store
+            MySQLDataStore.initialize();
             
             serverSocket = new ServerSocket(PORT);
             isRunning = true;
             
-            logger.info("GAWE Server started on port " + PORT);
+            logger.info("GAWE Server started on port " + PORT + " with MySQL database");
             logger.info("Waiting for client connections...");
             
             while (isRunning) {
@@ -74,6 +74,9 @@ public class GaweServer {
         if (threadPool != null && !threadPool.isShutdown()) {
             threadPool.shutdown();
         }
+        
+        // Close MySQL connections
+        MySQLDataStore.close();
         
         logger.info("GAWE Server stopped");
     }
