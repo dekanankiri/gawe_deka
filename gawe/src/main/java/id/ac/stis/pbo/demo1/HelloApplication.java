@@ -1,0 +1,272 @@
+package id.ac.stis.pbo.demo1;
+
+import id.ac.stis.pbo.demo1.database.DatabaseManager;
+import id.ac.stis.pbo.demo1.models.Employee;
+import id.ac.stis.pbo.demo1.server.GaweServer;
+import id.ac.stis.pbo.demo1.ui.SupervisorDashboard;
+import id.ac.stis.pbo.demo1.ui.ManagerDashboard;
+import id.ac.stis.pbo.demo1.ui.EmployeeDashboard;
+import id.ac.stis.pbo.demo1.data.DataStore;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.stage.Stage;
+import java.util.concurrent.CompletableFuture;
+
+/**
+ * Enhanced HelloApplication with multi-threading support and complete role system
+ */
+public class HelloApplication extends Application {
+    private DatabaseManager dbManager;
+    private GaweServer server;
+
+    @Override
+    public void init() {
+        // Initialize database
+        dbManager = new DatabaseManager();
+        dbManager.initializeDatabase();
+
+        // Initialize DataStore with sample data
+        DataStore.initialize();
+
+        // Start server in background thread
+        CompletableFuture.runAsync(() -> {
+            try {
+                server = new GaweServer();
+                server.start();
+            } catch (Exception e) {
+                System.err.println("Failed to start server: " + e.getMessage());
+            }
+        });
+    }
+
+    @Override
+    public void start(Stage stage) {
+        BorderPane root = new BorderPane();
+        root.setStyle("-fx-background-color: linear-gradient(to bottom, #667eea 0%, #764ba2 100%);");
+
+        // Create login form
+        VBox loginForm = createLoginForm(stage);
+        root.setCenter(loginForm);
+
+        Scene scene = new Scene(root, 800, 600);
+        stage.setScene(scene);
+        stage.setTitle("GAWE - Employee Management System");
+        stage.setOnCloseRequest(e -> {
+            if (server != null) {
+                try {
+                    server.stop();
+                } catch (Exception ex) {
+                    System.err.println("Error stopping server: " + ex.getMessage());
+                }
+            }
+            Platform.exit();
+        });
+        stage.show();
+    }
+
+    private VBox createLoginForm(Stage primaryStage) {
+        VBox loginContainer = new VBox(20);
+        loginContainer.setAlignment(Pos.CENTER);
+        loginContainer.setPadding(new Insets(40));
+        loginContainer.setMaxWidth(400);
+        loginContainer.setStyle("""
+            -fx-background-color: rgba(255, 255, 255, 0.95);
+            -fx-background-radius: 20;
+            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 20, 0, 0, 10);
+        """);
+
+        // Logo and title
+        Label titleLabel = new Label("GAWE");
+        titleLabel.setFont(Font.font("Segoe UI", FontWeight.BOLD, 36));
+        titleLabel.setTextFill(Color.web("#2c3e50"));
+
+        Label subtitleLabel = new Label("Employee Management System");
+        subtitleLabel.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 14));
+        subtitleLabel.setTextFill(Color.web("#7f8c8d"));
+
+        // Login form
+        GridPane formGrid = new GridPane();
+        formGrid.setHgap(10);
+        formGrid.setVgap(15);
+        formGrid.setAlignment(Pos.CENTER);
+
+        Label userLabel = new Label("Employee ID:");
+        userLabel.setFont(Font.font("Segoe UI", FontWeight.MEDIUM, 12));
+        TextField userField = new TextField();
+        userField.setPromptText("Enter your employee ID");
+        userField.setPrefWidth(250);
+        userField.setStyle("""
+            -fx-padding: 12;
+            -fx-background-radius: 8;
+            -fx-border-color: #bdc3c7;
+            -fx-border-radius: 8;
+        """);
+
+        Label passLabel = new Label("Password:");
+        passLabel.setFont(Font.font("Segoe UI", FontWeight.MEDIUM, 12));
+        PasswordField passField = new PasswordField();
+        passField.setPromptText("Enter your password");
+        passField.setPrefWidth(250);
+        passField.setStyle("""
+            -fx-padding: 12;
+            -fx-background-radius: 8;
+            -fx-border-color: #bdc3c7;
+            -fx-border-radius: 8;
+        """);
+
+        formGrid.add(userLabel, 0, 0);
+        formGrid.add(userField, 1, 0);
+        formGrid.add(passLabel, 0, 1);
+        formGrid.add(passField, 1, 1);
+
+        // Login button
+        Button loginBtn = new Button("Login");
+        loginBtn.setPrefWidth(250);
+        loginBtn.setStyle("""
+            -fx-background-color: #3498db;
+            -fx-text-fill: white;
+            -fx-padding: 12;
+            -fx-background-radius: 8;
+            -fx-font-weight: bold;
+            -fx-font-size: 14px;
+            -fx-cursor: hand;
+        """);
+
+        loginBtn.setOnMouseEntered(e -> loginBtn.setStyle("""
+            -fx-background-color: #2980b9;
+            -fx-text-fill: white;
+            -fx-padding: 12;
+            -fx-background-radius: 8;
+            -fx-font-weight: bold;
+            -fx-font-size: 14px;
+            -fx-cursor: hand;
+        """));
+
+        loginBtn.setOnMouseExited(e -> loginBtn.setStyle("""
+            -fx-background-color: #3498db;
+            -fx-text-fill: white;
+            -fx-padding: 12;
+            -fx-background-radius: 8;
+            -fx-font-weight: bold;
+            -fx-font-size: 14px;
+            -fx-cursor: hand;
+        """));
+
+        loginBtn.setOnAction(e -> handleLogin(userField.getText(), passField.getText(), primaryStage));
+
+        // Enter key support
+        passField.setOnAction(e -> handleLogin(userField.getText(), passField.getText(), primaryStage));
+
+        // Demo credentials info
+        Label demoLabel = new Label("Demo Credentials:");
+        demoLabel.setFont(Font.font("Segoe UI", FontWeight.BOLD, 12));
+        demoLabel.setTextFill(Color.web("#2c3e50"));
+
+        VBox demoInfo = new VBox(5);
+        demoInfo.setAlignment(Pos.CENTER);
+
+        Label[] demoCredentials = {
+                new Label("Manager: MNG001 / password123"),
+                new Label("Supervisor: SUP001 / password123"),
+                new Label("Employee: EMP001 / password123")
+        };
+
+        for (Label label : demoCredentials) {
+            label.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 10));
+            label.setTextFill(Color.web("#7f8c8d"));
+        }
+
+        demoInfo.getChildren().addAll(demoCredentials);
+
+        loginContainer.getChildren().addAll(titleLabel, subtitleLabel, formGrid, loginBtn, demoLabel, demoInfo);
+        return loginContainer;
+    }
+
+    private void handleLogin(String employeeId, String password, Stage primaryStage) {
+        if (employeeId.isEmpty() || password.isEmpty()) {
+            showAlert(Alert.AlertType.WARNING, "Login Failed", "Please enter both Employee ID and Password.");
+            return;
+        }
+
+        // Authenticate user using DataStore
+        Employee employee = DataStore.authenticateUser(employeeId, password);
+
+        if (employee != null) {
+            // Close login window
+            primaryStage.close();
+
+            // Open appropriate dashboard based on role
+            openDashboard(employee);
+        } else {
+            showAlert(Alert.AlertType.ERROR, "Login Failed", "Invalid Employee ID or Password.");
+        }
+    }
+
+    private void openDashboard(Employee employee) {
+        try {
+            Stage dashboardStage = new Stage();
+
+            switch (employee.getRole().toLowerCase()) {
+                case "manajer":
+                    // Open Manager Dashboard
+                    ManagerDashboard managerDashboard = new ManagerDashboard(employee);
+                    managerDashboard.start(dashboardStage);
+                    break;
+
+                case "supervisor":
+                    // Open Supervisor Dashboard
+                    SupervisorDashboard supervisorDashboard = new SupervisorDashboard(employee);
+                    supervisorDashboard.start(dashboardStage);
+                    break;
+
+                case "pegawai":
+                    // Open Employee Dashboard
+                    EmployeeDashboard employeeDashboard = new EmployeeDashboard(employee);
+                    employeeDashboard.start(dashboardStage);
+                    break;
+
+                default:
+                    showAlert(Alert.AlertType.ERROR, "Error", "Unknown user role: " + employee.getRole());
+                    return;
+            }
+
+        } catch (Exception e) {
+            showAlert(Alert.AlertType.ERROR, "Error", "Failed to open dashboard: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void showAlert(Alert.AlertType type, String title, String message) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    @Override
+    public void stop() {
+        if (server != null) {
+            try {
+                server.stop();
+            } catch (Exception e) {
+                System.err.println("Error stopping server: " + e.getMessage());
+            }
+        }
+        if (dbManager != null) {
+            dbManager.close();
+        }
+    }
+
+    public static void main(String[] args) {
+        launch();
+    }
+}
