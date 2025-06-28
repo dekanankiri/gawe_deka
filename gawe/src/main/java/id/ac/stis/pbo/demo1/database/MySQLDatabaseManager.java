@@ -7,8 +7,6 @@ import java.sql.*;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.Date;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 /**
  * MySQL Database manager for GAWE application with connection pooling
@@ -51,6 +49,10 @@ public class MySQLDatabaseManager {
             logger.severe("Failed to initialize MySQL connection pool: " + e.getMessage());
             throw new RuntimeException("Database connection failed", e);
         }
+    }
+
+    public Connection getConnection() throws SQLException {
+        return dataSource.getConnection();
     }
 
     public void initializeDatabase() {
@@ -332,7 +334,7 @@ public class MySQLDatabaseManager {
                 pstmt.setString(4, (String) employee[3]);
                 pstmt.setString(5, (String) employee[4]);
                 pstmt.setString(6, (String) employee[5]);
-                pstmt.setDate(7, Date.valueOf((String) employee[6]));
+                pstmt.setDate(7, java.sql.Date.valueOf((String) employee[6]));
                 pstmt.setInt(8, (Integer) employee[7]);
                 pstmt.setDouble(9, (Double) employee[8]);
                 pstmt.setDouble(10, (Double) employee[9]);
@@ -510,7 +512,7 @@ public class MySQLDatabaseManager {
             
             // Create attendance for last 30 days
             for (int day = 1; day <= 30; day++) {
-                Date attendanceDate = Date.valueOf("2024-12-" + String.format("%02d", day));
+                java.sql.Date attendanceDate = java.sql.Date.valueOf("2024-12-" + String.format("%02d", day));
                 
                 for (Employee emp : employees) {
                     if (Math.random() > 0.1) { // 90% attendance rate
@@ -556,7 +558,7 @@ public class MySQLDatabaseManager {
                 // Weekly team meetings
                 for (int i = 0; i < divisions.length; i++) {
                     for (int week = 1; week <= 4; week++) {
-                        Date meetingDate = Date.valueOf("2024-12-" + String.format("%02d", week * 7));
+                        java.sql.Date meetingDate = java.sql.Date.valueOf("2024-12-" + String.format("%02d", week * 7));
                         
                         meetingStmt.setString(1, divisions[i] + " Weekly Team Meeting");
                         meetingStmt.setString(2, "Weekly team sync and updates");
@@ -588,7 +590,7 @@ public class MySQLDatabaseManager {
                 // Monthly all-hands meeting
                 meetingStmt.setString(1, "Monthly All-Hands Meeting");
                 meetingStmt.setString(2, "Company updates and announcements");
-                meetingStmt.setDate(3, Date.valueOf("2024-12-15"));
+                meetingStmt.setDate(3, java.sql.Date.valueOf("2024-12-15"));
                 meetingStmt.setTime(4, Time.valueOf("14:00:00"));
                 meetingStmt.setTime(5, Time.valueOf("15:30:00"));
                 meetingStmt.setString(6, "Main Conference Room");
@@ -636,8 +638,8 @@ public class MySQLDatabaseManager {
             
             for (int i = 0; i < 15; i++) {
                 Employee emp = allEmployees.get(i % allEmployees.size());
-                Date startDate = Date.valueOf("2024-12-" + String.format("%02d", 20 + (i % 10)));
-                Date endDate = Date.valueOf("2024-12-" + String.format("%02d", 22 + (i % 10) + (i % 3)));
+                java.sql.Date startDate = java.sql.Date.valueOf("2024-12-" + String.format("%02d", 20 + (i % 10)));
+                java.sql.Date endDate = java.sql.Date.valueOf("2024-12-" + String.format("%02d", 22 + (i % 10) + (i % 3)));
                 
                 pstmt.setString(1, emp.getId());
                 pstmt.setString(2, leaveTypes[i % 4]);

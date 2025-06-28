@@ -1,6 +1,6 @@
 package id.ac.stis.pbo.demo1.ui;
 
-import id.ac.stis.pbo.demo1.data.DataStore;
+import id.ac.stis.pbo.demo1.data.MySQLDataStore;
 import id.ac.stis.pbo.demo1.models.*;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Calendar;
 
 /**
- * Enhanced Employee Dashboard with integrated role interactions
+ * Enhanced Employee Dashboard with MySQL integration and role interactions
  */
 public class EmployeeDashboard extends Application {
     private final Employee employee;
@@ -299,12 +299,12 @@ public class EmployeeDashboard extends Application {
     }
 
     private boolean hasAttendanceToday() {
-        List<Attendance> todayAttendance = DataStore.getTodayAttendance(employee.getId());
+        List<Attendance> todayAttendance = MySQLDataStore.getTodayAttendance(employee.getId());
         return !todayAttendance.isEmpty();
     }
 
     private boolean hasCompletedAttendanceToday() {
-        List<Attendance> todayAttendance = DataStore.getTodayAttendance(employee.getId());
+        List<Attendance> todayAttendance = MySQLDataStore.getTodayAttendance(employee.getId());
         return !todayAttendance.isEmpty() &&
                 todayAttendance.get(0).getJamKeluar() != null;
     }
@@ -326,7 +326,7 @@ public class EmployeeDashboard extends Application {
         meetingsList.setPrefHeight(150);
 
         // INTEGRATED: Get meetings where this employee is a participant
-        List<Meeting> todaysMeetings = DataStore.getMeetingsByEmployee(employee.getId());
+        List<Meeting> todaysMeetings = MySQLDataStore.getMeetingsByEmployee(employee.getId());
         Calendar today = Calendar.getInstance();
 
         ObservableList<String> meetingItems = FXCollections.observableArrayList();
@@ -338,7 +338,7 @@ public class EmployeeDashboard extends Application {
                     meetingCal.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR)) {
                 
                 // Get organizer name
-                Employee organizer = DataStore.getEmployeeById(meeting.getOrganizerId());
+                Employee organizer = MySQLDataStore.getEmployeeById(meeting.getOrganizerId());
                 String organizerName = organizer != null ? organizer.getNama() : "Unknown";
                 
                 meetingItems.add("📅 " + meeting.getTitle() + " at " + meeting.getWaktuMulai() +
@@ -370,7 +370,7 @@ public class EmployeeDashboard extends Application {
         titleLabel.setTextFill(Color.web("#2c3e50"));
 
         // Get pending leave requests for this employee
-        List<LeaveRequest> myLeaveRequests = DataStore.getLeaveRequestsByEmployee(employee.getId());
+        List<LeaveRequest> myLeaveRequests = MySQLDataStore.getLeaveRequestsByEmployee(employee.getId());
         long pendingCount = myLeaveRequests.stream().filter(lr -> "pending".equals(lr.getStatus())).count();
         long approvedCount = myLeaveRequests.stream().filter(lr -> "approved".equals(lr.getStatus())).count();
         long rejectedCount = myLeaveRequests.stream().filter(lr -> "rejected".equals(lr.getStatus())).count();
@@ -400,7 +400,7 @@ public class EmployeeDashboard extends Application {
         LocalTime now = LocalTime.now();
         String timeStr = String.format("%02d:%02d", now.getHour(), now.getMinute());
 
-        boolean success = DataStore.saveAttendance(employee.getId(), new Date(), timeStr, null, "hadir");
+        boolean success = MySQLDataStore.saveAttendance(employee.getId(), new Date(), timeStr, null, "hadir");
         if (success) {
             showAlert(Alert.AlertType.INFORMATION, "Clock In", "Successfully clocked in at " + timeStr);
             showDashboardContent(); // Refresh to update buttons
@@ -419,7 +419,7 @@ public class EmployeeDashboard extends Application {
         LocalTime now = LocalTime.now();
         String timeStr = String.format("%02d:%02d", now.getHour(), now.getMinute());
 
-        boolean success = DataStore.updateAttendanceClockOut(employee.getId(), timeStr);
+        boolean success = MySQLDataStore.updateAttendanceClockOut(employee.getId(), timeStr);
         if (success) {
             showAlert(Alert.AlertType.INFORMATION, "Clock Out", "Successfully clocked out at " + timeStr);
             showDashboardContent(); // Refresh to update buttons
@@ -469,7 +469,7 @@ public class EmployeeDashboard extends Application {
 
         TableColumn<Meeting, String> organizerCol = new TableColumn<>("Organizer");
         organizerCol.setCellValueFactory(cellData -> {
-            Employee organizer = DataStore.getEmployeeById(cellData.getValue().getOrganizerId());
+            Employee organizer = MySQLDataStore.getEmployeeById(cellData.getValue().getOrganizerId());
             return new javafx.beans.property.SimpleStringProperty(organizer != null ? organizer.getNama() : "Unknown");
         });
         organizerCol.setPrefWidth(150);
@@ -481,7 +481,7 @@ public class EmployeeDashboard extends Application {
         table.getColumns().addAll(titleCol, dateCol, timeCol, locationCol, organizerCol, statusCol);
 
         // INTEGRATED: Get meetings where this employee is a participant
-        List<Meeting> myMeetings = DataStore.getMeetingsByEmployee(employee.getId());
+        List<Meeting> myMeetings = MySQLDataStore.getMeetingsByEmployee(employee.getId());
         ObservableList<Meeting> meetingData = FXCollections.observableArrayList(myMeetings);
         table.setItems(meetingData);
 
@@ -541,7 +541,7 @@ public class EmployeeDashboard extends Application {
         approverCol.setCellValueFactory(cellData -> {
             String approverId = cellData.getValue().getApproverId();
             if (approverId != null) {
-                Employee approver = DataStore.getEmployeeById(approverId);
+                Employee approver = MySQLDataStore.getEmployeeById(approverId);
                 return new javafx.beans.property.SimpleStringProperty(approver != null ? approver.getNama() : "Unknown");
             }
             return new javafx.beans.property.SimpleStringProperty("Pending");
@@ -553,7 +553,7 @@ public class EmployeeDashboard extends Application {
         table.getColumns().addAll(typeCol, startDateCol, endDateCol, daysCol, statusCol, approverCol, notesCol);
 
         // INTEGRATED: Get leave requests for this employee
-        List<LeaveRequest> myLeaveRequests = DataStore.getLeaveRequestsByEmployee(employee.getId());
+        List<LeaveRequest> myLeaveRequests = MySQLDataStore.getLeaveRequestsByEmployee(employee.getId());
         ObservableList<LeaveRequest> leaveData = FXCollections.observableArrayList(myLeaveRequests);
         table.setItems(leaveData);
 
@@ -607,8 +607,8 @@ public class EmployeeDashboard extends Application {
         reasonArea.setPrefRowCount(3);
 
         // Show who will approve this request
-        String supervisorId = DataStore.getSupervisorByDivision(employee.getDivisi());
-        Employee supervisor = DataStore.getEmployeeById(supervisorId);
+        String supervisorId = MySQLDataStore.getSupervisorByDivision(employee.getDivisi());
+        Employee supervisor = MySQLDataStore.getEmployeeById(supervisorId);
         Label approverInfo = new Label("This request will be sent to: " + 
                 (supervisor != null ? supervisor.getNama() + " (" + supervisor.getJabatan() + ")" : "Your supervisor"));
         approverInfo.setStyle("-fx-text-fill: #666; -fx-font-style: italic;");
@@ -642,7 +642,7 @@ public class EmployeeDashboard extends Application {
                     Date startSqlDate = java.sql.Date.valueOf(startDate);
                     Date endSqlDate = java.sql.Date.valueOf(endDate);
 
-                    boolean success = DataStore.saveLeaveRequest(employee.getId(), leaveTypeCombo.getValue(),
+                    boolean success = MySQLDataStore.saveLeaveRequest(employee.getId(), leaveTypeCombo.getValue(),
                             startSqlDate, endSqlDate, reasonArea.getText());
                     if (success) {
                         showAlert(Alert.AlertType.INFORMATION, "Success", 
@@ -699,7 +699,7 @@ public class EmployeeDashboard extends Application {
 
         table.getColumns().addAll(dateCol, clockInCol, clockOutCol, statusCol, lateCol);
 
-        List<Attendance> myAttendance = DataStore.getAttendanceByEmployee(employee.getId());
+        List<Attendance> myAttendance = MySQLDataStore.getAttendanceByEmployee(employee.getId());
         ObservableList<Attendance> attendanceData = FXCollections.observableArrayList(myAttendance);
         table.setItems(attendanceData);
 
@@ -777,7 +777,7 @@ public class EmployeeDashboard extends Application {
 
         TableColumn<EmployeeEvaluation, String> supervisorCol = new TableColumn<>("Supervisor");
         supervisorCol.setCellValueFactory(cellData -> {
-            Employee supervisor = DataStore.getEmployeeById(cellData.getValue().getSupervisorId());
+            Employee supervisor = MySQLDataStore.getEmployeeById(cellData.getValue().getSupervisorId());
             return new javafx.beans.property.SimpleStringProperty(supervisor != null ? supervisor.getNama() : "Unknown");
         });
 
@@ -798,7 +798,7 @@ public class EmployeeDashboard extends Application {
 
         table.getColumns().addAll(dateCol, supervisorCol, punctualityCol, attendanceCol, overallCol, commentsCol);
 
-        List<EmployeeEvaluation> myEvaluations = DataStore.getEvaluationsByEmployee(employee.getId());
+        List<EmployeeEvaluation> myEvaluations = MySQLDataStore.getEvaluationsByEmployee(employee.getId());
         ObservableList<EmployeeEvaluation> evaluationData = FXCollections.observableArrayList(myEvaluations);
         table.setItems(evaluationData);
 
@@ -931,7 +931,7 @@ public class EmployeeDashboard extends Application {
 
         table.getColumns().addAll(monthCol, yearCol, baseCol, kpiBonusCol, supervisorBonusCol, totalCol);
 
-        List<SalaryHistory> mySalaryHistory = DataStore.getSalaryHistoryByEmployee(employee.getId());
+        List<SalaryHistory> mySalaryHistory = MySQLDataStore.getSalaryHistoryByEmployee(employee.getId());
         ObservableList<SalaryHistory> salaryData = FXCollections.observableArrayList(mySalaryHistory);
         table.setItems(salaryData);
 
