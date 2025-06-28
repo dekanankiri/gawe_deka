@@ -105,6 +105,7 @@ public class DataStore {
         createSampleMeetings();
         createSampleLeaveRequests();
         createSampleSalaryHistory();
+        createSampleMonthlyEvaluations();
         System.out.println("DataStore initialized with sample data");
     }
 
@@ -209,6 +210,30 @@ public class DataStore {
         }
     }
 
+    private static void createSampleMonthlyEvaluations() {
+        // Create sample monthly evaluations
+        List<Employee> employeeList = getEmployeesByRole("pegawai");
+
+        for (Employee emp : employeeList) {
+            // Create evaluations for last 3 months
+            for (int month = 10; month <= 12; month++) {
+                MonthlyEvaluation eval = new MonthlyEvaluation();
+                eval.setId(monthlyEvaluationIdGenerator.getAndIncrement());
+                eval.setEmployeeId(emp.getId());
+                eval.setSupervisorId(getSupervisorByDivision(emp.getDivisi()));
+                eval.setMonth(month);
+                eval.setYear(2024);
+                eval.setPunctualityScore(70 + Math.random() * 25);
+                eval.setAttendanceScore(75 + Math.random() * 20);
+                eval.setProductivityScore(70 + Math.random() * 25);
+                eval.setOverallRating((eval.getPunctualityScore() + eval.getAttendanceScore() + eval.getProductivityScore()) / 3);
+                eval.setComments("Monthly evaluation for " + emp.getNama() + " - Month " + month);
+                eval.setEvaluationDate(new Date());
+                monthlyEvaluationList.add(eval);
+            }
+        }
+    }
+
     private static void createSampleAttendance() {
         List<Employee> allEmployees = getAllEmployees();
         Calendar cal = Calendar.getInstance();
@@ -299,8 +324,8 @@ public class DataStore {
         Calendar cal = Calendar.getInstance();
 
         // Create some sample leave requests
-        for (int i = 0; i < 5; i++) {
-            Employee emp = allEmployees.get(i);
+        for (int i = 0; i < 10; i++) {
+            Employee emp = allEmployees.get(i % allEmployees.size());
 
             cal.set(2024, Calendar.DECEMBER, 20 + i);
             Date startDate = cal.getTime();
@@ -315,8 +340,15 @@ public class DataStore {
             leaveRequest.setEndDate(endDate);
             leaveRequest.setTotalDays(3);
             leaveRequest.setReason("Family vacation");
-            leaveRequest.setStatus("pending");
+            leaveRequest.setStatus(i < 5 ? "pending" : (i < 8 ? "approved" : "rejected"));
             leaveRequest.setRequestDate(new Date());
+            
+            if (!leaveRequest.getStatus().equals("pending")) {
+                leaveRequest.setApproverId("MNG001");
+                leaveRequest.setApproverNotes(leaveRequest.getStatus().equals("approved") ? "Approved" : "Rejected due to workload");
+                leaveRequest.setApprovalDate(new Date());
+            }
+            
             leaveRequestList.add(leaveRequest);
         }
     }
@@ -575,9 +607,24 @@ public class DataStore {
         return true;
     }
 
+    public static List<MonthlyEvaluation> getAllMonthlyEvaluations() {
+        return new ArrayList<>(monthlyEvaluationList);
+    }
+
     public static List<MonthlyEvaluation> getMonthlyEvaluationsByEmployee(String employeeId) {
         return monthlyEvaluationList.stream()
                 .filter(eval -> eval.getEmployeeId().equals(employeeId))
+                .sorted((e1, e2) -> {
+                    int yearCompare = Integer.compare(e2.getYear(), e1.getYear());
+                    if (yearCompare != 0) return yearCompare;
+                    return Integer.compare(e2.getMonth(), e1.getMonth());
+                })
+                .collect(Collectors.toList());
+    }
+
+    public static List<MonthlyEvaluation> getMonthlyEvaluationsBySupervisor(String supervisorId) {
+        return monthlyEvaluationList.stream()
+                .filter(eval -> eval.getSupervisorId().equals(supervisorId))
                 .sorted((e1, e2) -> {
                     int yearCompare = Integer.compare(e2.getYear(), e1.getYear());
                     if (yearCompare != 0) return yearCompare;

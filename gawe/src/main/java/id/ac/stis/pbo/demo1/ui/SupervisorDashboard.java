@@ -22,13 +22,18 @@ import java.time.LocalTime;
 import java.time.DayOfWeek;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 
 /**
- * Enhanced Supervisor Dashboard with monthly evaluation and fixes
+ * Enhanced Supervisor Dashboard with comprehensive features, meeting creation, and proper logout
  */
 public class SupervisorDashboard extends Application {
     private final Employee supervisor;
     private StackPane contentArea;
+    private DecimalFormat df = new DecimalFormat("#.##");
+    private SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
 
     public SupervisorDashboard(Employee supervisor) {
         this.supervisor = supervisor;
@@ -51,7 +56,7 @@ public class SupervisorDashboard extends Application {
         // Show default dashboard content
         showDashboardContent();
 
-        Scene scene = new Scene(root, 1400, 800);
+        Scene scene = new Scene(root, 1600, 900);
         stage.setScene(scene);
         stage.setTitle("GAWE - Supervisor Dashboard - " + supervisor.getNama());
         stage.show();
@@ -83,7 +88,10 @@ public class SupervisorDashboard extends Application {
             -fx-font-weight: bold;
             -fx-cursor: hand;
         """);
-        logoutBtn.setOnAction(e -> stage.close());
+        logoutBtn.setOnAction(e -> {
+            stage.close();
+            new id.ac.stis.pbo.demo1.HelloApplication().start(new Stage());
+        });
 
         header.getChildren().addAll(titleLabel, spacer, userLabel, logoutBtn);
         return header;
@@ -92,7 +100,7 @@ public class SupervisorDashboard extends Application {
     private VBox createNavigation() {
         VBox navigation = new VBox(5);
         navigation.setPadding(new Insets(20));
-        navigation.setPrefWidth(250);
+        navigation.setPrefWidth(280);
         navigation.setStyle("-fx-background-color: rgba(255, 255, 255, 0.9); -fx-background-radius: 0 15 15 0;");
 
         Label navTitle = new Label("Navigation");
@@ -107,7 +115,9 @@ public class SupervisorDashboard extends Application {
                 createNavButton("👥 Team Management", this::showTeamManagementContent),
                 createNavButton("⭐ Monthly Evaluation", this::showMonthlyEvaluationContent),
                 createNavButton("📄 Upload Report", this::showUploadReportContent),
-                createNavButton("📈 Performance Analytics", this::showPerformanceAnalyticsContent)
+                createNavButton("📈 Performance Analytics", this::showPerformanceAnalyticsContent),
+                createNavButton("💰 Salary Management", this::showSalaryManagementContent),
+                createNavButton("📋 All History", this::showAllHistoryContent)
         };
 
         navigation.getChildren().add(navTitle);
@@ -119,7 +129,7 @@ public class SupervisorDashboard extends Application {
 
     private Button createNavButton(String text, Runnable action) {
         Button button = new Button(text);
-        button.setPrefWidth(200);
+        button.setPrefWidth(240);
         button.setAlignment(Pos.CENTER_LEFT);
         button.setStyle("""
             -fx-background-color: transparent;
@@ -309,10 +319,10 @@ public class SupervisorDashboard extends Application {
                 .count();
         VBox atRiskCard = createStatsCard("At Risk", String.valueOf(atRiskCount), "⚠️", "#e74c3c");
 
-        // Reports uploaded card
-        VBox reportsCard = createStatsCard("My Leave Days", String.valueOf(supervisor.getSisaCuti()), "🏖️", "#9b59b6");
+        // Leave days card
+        VBox leaveCard = createStatsCard("My Leave Days", String.valueOf(supervisor.getSisaCuti()), "🏖️", "#9b59b6");
 
-        statsContainer.getChildren().addAll(teamSizeCard, avgKpiCard, atRiskCard, reportsCard);
+        statsContainer.getChildren().addAll(teamSizeCard, avgKpiCard, atRiskCard, leaveCard);
         return statsContainer;
     }
 
@@ -401,8 +411,7 @@ public class SupervisorDashboard extends Application {
 
         TableColumn<id.ac.stis.pbo.demo1.models.Attendance, String> dateCol = new TableColumn<>("Date");
         dateCol.setCellValueFactory(cellData ->
-                new javafx.beans.property.SimpleStringProperty(
-                        new java.text.SimpleDateFormat("dd/MM/yyyy").format(cellData.getValue().getTanggal())));
+                new javafx.beans.property.SimpleStringProperty(sdf.format(cellData.getValue().getTanggal())));
 
         TableColumn<id.ac.stis.pbo.demo1.models.Attendance, String> clockInCol = new TableColumn<>("Clock In");
         clockInCol.setCellValueFactory(new PropertyValueFactory<>("jamMasuk"));
@@ -432,9 +441,19 @@ public class SupervisorDashboard extends Application {
         title.setFont(Font.font("Segoe UI", FontWeight.BOLD, 24));
         title.setTextFill(Color.WHITE);
 
+        Button newMeetingBtn = new Button("➕ Schedule New Meeting");
+        newMeetingBtn.setStyle("""
+            -fx-background-color: #27ae60;
+            -fx-text-fill: white;
+            -fx-padding: 10 20;
+            -fx-background-radius: 5;
+            -fx-font-weight: bold;
+        """);
+        newMeetingBtn.setOnAction(e -> showNewMeetingDialog());
+
         TableView<id.ac.stis.pbo.demo1.models.Meeting> meetingsTable = createMyMeetingsTable();
 
-        content.getChildren().addAll(title, meetingsTable);
+        content.getChildren().addAll(title, newMeetingBtn, meetingsTable);
         contentArea.getChildren().add(content);
     }
 
@@ -451,8 +470,7 @@ public class SupervisorDashboard extends Application {
 
         TableColumn<id.ac.stis.pbo.demo1.models.Meeting, String> dateCol = new TableColumn<>("Date");
         dateCol.setCellValueFactory(cellData ->
-                new javafx.beans.property.SimpleStringProperty(
-                        new java.text.SimpleDateFormat("dd/MM/yyyy").format(cellData.getValue().getTanggal())));
+                new javafx.beans.property.SimpleStringProperty(sdf.format(cellData.getValue().getTanggal())));
 
         TableColumn<id.ac.stis.pbo.demo1.models.Meeting, String> timeCol = new TableColumn<>("Time");
         timeCol.setCellValueFactory(cellData ->
@@ -469,6 +487,91 @@ public class SupervisorDashboard extends Application {
         table.setPrefHeight(400);
 
         return table;
+    }
+
+    private void showNewMeetingDialog() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Schedule New Meeting");
+        dialog.setHeaderText("Create a new meeting for your team");
+
+        VBox content = new VBox(15);
+        content.setPadding(new Insets(20));
+
+        TextField titleField = new TextField();
+        titleField.setPromptText("Meeting title...");
+
+        TextArea descriptionArea = new TextArea();
+        descriptionArea.setPromptText("Meeting description...");
+        descriptionArea.setPrefRowCount(3);
+
+        DatePicker datePicker = new DatePicker();
+        datePicker.setValue(LocalDate.now().plusDays(1));
+
+        TextField startTimeField = new TextField();
+        startTimeField.setPromptText("Start time (HH:MM)");
+
+        TextField endTimeField = new TextField();
+        endTimeField.setPromptText("End time (HH:MM)");
+
+        TextField locationField = new TextField();
+        locationField.setPromptText("Meeting location...");
+
+        // Team member selection
+        ListView<Employee> teamMembersList = new ListView<>();
+        teamMembersList.setPrefHeight(150);
+        teamMembersList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        List<Employee> teamMembers = DataStore.getEmployeesByDivision(supervisor.getDivisi());
+        teamMembersList.setItems(FXCollections.observableArrayList(teamMembers));
+
+        content.getChildren().addAll(
+                new Label("Title:"), titleField,
+                new Label("Description:"), descriptionArea,
+                new Label("Date:"), datePicker,
+                new Label("Start Time:"), startTimeField,
+                new Label("End Time:"), endTimeField,
+                new Label("Location:"), locationField,
+                new Label("Team Members (select multiple):"), teamMembersList
+        );
+
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.OK) {
+                if (!titleField.getText().isEmpty() && datePicker.getValue() != null) {
+                    Date meetingDate = java.sql.Date.valueOf(datePicker.getValue());
+                    
+                    List<String> selectedParticipants = teamMembersList.getSelectionModel().getSelectedItems()
+                            .stream()
+                            .map(Employee::getId)
+                            .collect(Collectors.toList());
+
+                    // Add supervisor as organizer
+                    selectedParticipants.add(supervisor.getId());
+
+                    boolean success = DataStore.saveMeeting(
+                            titleField.getText(),
+                            descriptionArea.getText(),
+                            meetingDate,
+                            startTimeField.getText(),
+                            endTimeField.getText(),
+                            locationField.getText(),
+                            supervisor.getId(),
+                            selectedParticipants
+                    );
+
+                    if (success) {
+                        showAlert(Alert.AlertType.INFORMATION, "Success", "Meeting scheduled successfully!");
+                        showMyMeetings();
+                    } else {
+                        showAlert(Alert.AlertType.ERROR, "Error", "Failed to schedule meeting.");
+                    }
+                } else {
+                    showAlert(Alert.AlertType.WARNING, "Invalid Input", "Please fill in required fields.");
+                }
+            }
+        });
     }
 
     private void showMyLeaveRequests() {
@@ -510,13 +613,11 @@ public class SupervisorDashboard extends Application {
 
         TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> startDateCol = new TableColumn<>("Start Date");
         startDateCol.setCellValueFactory(cellData ->
-                new javafx.beans.property.SimpleStringProperty(
-                        new java.text.SimpleDateFormat("dd/MM/yyyy").format(cellData.getValue().getStartDate())));
+                new javafx.beans.property.SimpleStringProperty(sdf.format(cellData.getValue().getStartDate())));
 
         TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> endDateCol = new TableColumn<>("End Date");
         endDateCol.setCellValueFactory(cellData ->
-                new javafx.beans.property.SimpleStringProperty(
-                        new java.text.SimpleDateFormat("dd/MM/yyyy").format(cellData.getValue().getEndDate())));
+                new javafx.beans.property.SimpleStringProperty(sdf.format(cellData.getValue().getEndDate())));
 
         TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, Integer> daysCol = new TableColumn<>("Days");
         daysCol.setCellValueFactory(new PropertyValueFactory<>("totalDays"));
@@ -524,7 +625,10 @@ public class SupervisorDashboard extends Application {
         TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> statusCol = new TableColumn<>("Status");
         statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
 
-        table.getColumns().addAll(typeCol, startDateCol, endDateCol, daysCol, statusCol);
+        TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> notesCol = new TableColumn<>("Approval Notes");
+        notesCol.setCellValueFactory(new PropertyValueFactory<>("approverNotes"));
+
+        table.getColumns().addAll(typeCol, startDateCol, endDateCol, daysCol, statusCol, notesCol);
 
         List<id.ac.stis.pbo.demo1.models.LeaveRequest> myLeaveRequests = DataStore.getLeaveRequestsByEmployee(supervisor.getId());
         table.setItems(FXCollections.observableArrayList(myLeaveRequests));
@@ -697,10 +801,19 @@ public class SupervisorDashboard extends Application {
         title.setFont(Font.font("Segoe UI", FontWeight.BOLD, 24));
         title.setTextFill(Color.WHITE);
 
-        // Monthly evaluation form
-        VBox evaluationForm = createMonthlyEvaluationForm();
+        TabPane tabPane = new TabPane();
+        tabPane.setStyle("""
+            -fx-background-color: white;
+            -fx-background-radius: 15;
+            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 5);
+        """);
 
-        content.getChildren().addAll(title, evaluationForm);
+        Tab evaluationTab = new Tab("New Evaluation", createMonthlyEvaluationForm());
+        Tab historyTab = new Tab("Evaluation History", createMonthlyEvaluationHistoryTable());
+
+        tabPane.getTabs().addAll(evaluationTab, historyTab);
+
+        content.getChildren().addAll(title, tabPane);
         contentArea.getChildren().add(content);
     }
 
@@ -709,11 +822,6 @@ public class SupervisorDashboard extends Application {
         form.setAlignment(Pos.CENTER);
         form.setPadding(new Insets(30));
         form.setMaxWidth(700);
-        form.setStyle("""
-            -fx-background-color: rgba(255, 255, 255, 0.95);
-            -fx-background-radius: 15;
-            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 5);
-        """);
 
         Label formTitle = new Label("Monthly Performance Evaluation");
         formTitle.setFont(Font.font("Segoe UI", FontWeight.BOLD, 18));
@@ -892,6 +1000,40 @@ public class SupervisorDashboard extends Application {
         return form;
     }
 
+    private TableView<DataStore.MonthlyEvaluation> createMonthlyEvaluationHistoryTable() {
+        TableView<DataStore.MonthlyEvaluation> table = new TableView<>();
+        table.setPrefHeight(400);
+
+        TableColumn<DataStore.MonthlyEvaluation, String> employeeCol = new TableColumn<>("Employee");
+        employeeCol.setCellValueFactory(new PropertyValueFactory<>("employeeId"));
+
+        TableColumn<DataStore.MonthlyEvaluation, String> monthCol = new TableColumn<>("Month");
+        monthCol.setCellValueFactory(cellData -> {
+            String[] months = {"", "January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"};
+            return new javafx.beans.property.SimpleStringProperty(months[cellData.getValue().getMonth()]);
+        });
+
+        TableColumn<DataStore.MonthlyEvaluation, Integer> yearCol = new TableColumn<>("Year");
+        yearCol.setCellValueFactory(new PropertyValueFactory<>("year"));
+
+        TableColumn<DataStore.MonthlyEvaluation, String> overallCol = new TableColumn<>("Overall Rating");
+        overallCol.setCellValueFactory(cellData ->
+                new javafx.beans.property.SimpleStringProperty(df.format(cellData.getValue().getOverallRating()) + "%"));
+
+        TableColumn<DataStore.MonthlyEvaluation, String> dateCol = new TableColumn<>("Date");
+        dateCol.setCellValueFactory(cellData ->
+                new javafx.beans.property.SimpleStringProperty(sdf.format(cellData.getValue().getEvaluationDate())));
+
+        table.getColumns().addAll(employeeCol, monthCol, yearCol, overallCol, dateCol);
+
+        // Get monthly evaluations by this supervisor
+        List<DataStore.MonthlyEvaluation> monthlyEvaluations = DataStore.getMonthlyEvaluationsBySupervisor(supervisor.getId());
+        table.setItems(FXCollections.observableArrayList(monthlyEvaluations));
+
+        return table;
+    }
+
     private void showUploadReportContent() {
         contentArea.getChildren().clear();
 
@@ -902,10 +1044,19 @@ public class SupervisorDashboard extends Application {
         title.setFont(Font.font("Segoe UI", FontWeight.BOLD, 24));
         title.setTextFill(Color.WHITE);
 
-        // Upload form
-        VBox uploadForm = createUploadForm();
+        TabPane tabPane = new TabPane();
+        tabPane.setStyle("""
+            -fx-background-color: white;
+            -fx-background-radius: 15;
+            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 5);
+        """);
 
-        content.getChildren().addAll(title, uploadForm);
+        Tab uploadTab = new Tab("Upload Report", createUploadForm());
+        Tab historyTab = new Tab("Report History", createMyReportHistoryTable());
+
+        tabPane.getTabs().addAll(uploadTab, historyTab);
+
+        content.getChildren().addAll(title, tabPane);
         contentArea.getChildren().add(content);
     }
 
@@ -914,11 +1065,6 @@ public class SupervisorDashboard extends Application {
         form.setAlignment(Pos.CENTER);
         form.setPadding(new Insets(30));
         form.setMaxWidth(500);
-        form.setStyle("""
-            -fx-background-color: rgba(255, 255, 255, 0.95);
-            -fx-background-radius: 15;
-            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 5);
-        """);
 
         Label formTitle = new Label("Monthly Division Report");
         formTitle.setFont(Font.font("Segoe UI", FontWeight.BOLD, 18));
@@ -1017,6 +1163,38 @@ public class SupervisorDashboard extends Application {
         return form;
     }
 
+    private TableView<id.ac.stis.pbo.demo1.models.Report> createMyReportHistoryTable() {
+        TableView<id.ac.stis.pbo.demo1.models.Report> table = new TableView<>();
+        table.setPrefHeight(400);
+
+        TableColumn<id.ac.stis.pbo.demo1.models.Report, String> monthCol = new TableColumn<>("Month");
+        monthCol.setCellValueFactory(cellData ->
+                new javafx.beans.property.SimpleStringProperty(cellData.getValue().getMonthName()));
+
+        TableColumn<id.ac.stis.pbo.demo1.models.Report, Integer> yearCol = new TableColumn<>("Year");
+        yearCol.setCellValueFactory(new PropertyValueFactory<>("tahun"));
+
+        TableColumn<id.ac.stis.pbo.demo1.models.Report, String> statusCol = new TableColumn<>("Status");
+        statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
+
+        TableColumn<id.ac.stis.pbo.demo1.models.Report, String> uploadDateCol = new TableColumn<>("Upload Date");
+        uploadDateCol.setCellValueFactory(cellData ->
+                new javafx.beans.property.SimpleStringProperty(sdf.format(cellData.getValue().getUploadDate())));
+
+        TableColumn<id.ac.stis.pbo.demo1.models.Report, String> notesCol = new TableColumn<>("Manager Notes");
+        notesCol.setCellValueFactory(new PropertyValueFactory<>("managerNotes"));
+
+        table.getColumns().addAll(monthCol, yearCol, statusCol, uploadDateCol, notesCol);
+
+        List<id.ac.stis.pbo.demo1.models.Report> myReports = DataStore.getReportsByDivision(supervisor.getDivisi())
+                .stream()
+                .filter(report -> report.getSupervisorId().equals(supervisor.getId()))
+                .collect(Collectors.toList());
+        table.setItems(FXCollections.observableArrayList(myReports));
+
+        return table;
+    }
+
     private void showPerformanceAnalyticsContent() {
         contentArea.getChildren().clear();
 
@@ -1110,6 +1288,256 @@ public class SupervisorDashboard extends Application {
 
         card.getChildren().addAll(valueLabel, titleLabel);
         return card;
+    }
+
+    private void showSalaryManagementContent() {
+        contentArea.getChildren().clear();
+
+        VBox content = new VBox(20);
+        content.setAlignment(Pos.TOP_CENTER);
+
+        Label title = new Label("Salary Management");
+        title.setFont(Font.font("Segoe UI", FontWeight.BOLD, 24));
+        title.setTextFill(Color.WHITE);
+
+        TabPane tabPane = new TabPane();
+        tabPane.setStyle("""
+            -fx-background-color: white;
+            -fx-background-radius: 15;
+            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 5);
+        """);
+
+        Tab mySalaryTab = new Tab("My Salary", createMySalaryView());
+        Tab teamSalariesTab = new Tab("Team Salaries", createTeamSalariesTable());
+
+        tabPane.getTabs().addAll(mySalaryTab, teamSalariesTab);
+
+        content.getChildren().addAll(title, tabPane);
+        contentArea.getChildren().add(content);
+    }
+
+    private VBox createMySalaryView() {
+        VBox salaryView = new VBox(20);
+        salaryView.setPadding(new Insets(20));
+
+        // Current salary breakdown
+        VBox salaryBreakdown = createSalaryBreakdown();
+
+        // Salary history table
+        TableView<id.ac.stis.pbo.demo1.models.SalaryHistory> salaryTable = createMySalaryHistoryTable();
+
+        salaryView.getChildren().addAll(salaryBreakdown, salaryTable);
+        return salaryView;
+    }
+
+    private VBox createSalaryBreakdown() {
+        VBox breakdownBox = new VBox(15);
+        breakdownBox.setPadding(new Insets(20));
+        breakdownBox.setStyle("""
+            -fx-background-color: #f8f9fa;
+            -fx-background-radius: 10;
+            -fx-border-color: #dee2e6;
+            -fx-border-radius: 10;
+        """);
+
+        Label breakdownTitle = new Label("Current Monthly Salary Breakdown");
+        breakdownTitle.setFont(Font.font("Segoe UI", FontWeight.BOLD, 18));
+
+        GridPane salaryGrid = new GridPane();
+        salaryGrid.setHgap(20);
+        salaryGrid.setVgap(15);
+
+        double baseSalary = supervisor.getGajiPokok();
+        double kpiBonus = 0;
+        double supervisorBonus = 0;
+        double penalty = 0;
+
+        // Calculate KPI bonus
+        if (supervisor.getKpiScore() >= 90) {
+            kpiBonus = baseSalary * 0.20;
+        } else if (supervisor.getKpiScore() >= 80) {
+            kpiBonus = baseSalary * 0.15;
+        } else if (supervisor.getKpiScore() >= 70) {
+            kpiBonus = baseSalary * 0.10;
+        } else if (supervisor.getKpiScore() >= 60) {
+            kpiBonus = baseSalary * 0.05;
+        }
+
+        // Calculate supervisor bonus
+        if (supervisor.getSupervisorRating() >= 90) {
+            supervisorBonus = baseSalary * 0.15;
+        } else if (supervisor.getSupervisorRating() >= 80) {
+            supervisorBonus = baseSalary * 0.10;
+        } else if (supervisor.getSupervisorRating() >= 70) {
+            supervisorBonus = baseSalary * 0.05;
+        }
+
+        // Calculate penalty
+        if (supervisor.getKpiScore() < 60 || supervisor.getSupervisorRating() < 60) {
+            penalty = baseSalary * 0.10;
+        }
+
+        double totalSalary = supervisor.calculateGajiBulanan();
+
+        salaryGrid.add(new Label("Base Salary:"), 0, 0);
+        salaryGrid.add(new Label("Rp " + String.format("%,.0f", baseSalary)), 1, 0);
+
+        salaryGrid.add(new Label("KPI Bonus:"), 0, 1);
+        salaryGrid.add(new Label("Rp " + String.format("%,.0f", kpiBonus)), 1, 1);
+
+        salaryGrid.add(new Label("Supervisor Bonus:"), 0, 2);
+        salaryGrid.add(new Label("Rp " + String.format("%,.0f", supervisorBonus)), 1, 2);
+
+        if (penalty > 0) {
+            salaryGrid.add(new Label("Performance Penalty:"), 0, 3);
+            Label penaltyLabel = new Label("-Rp " + String.format("%,.0f", penalty));
+            penaltyLabel.setTextFill(Color.RED);
+            salaryGrid.add(penaltyLabel, 1, 3);
+        }
+
+        salaryGrid.add(new Separator(), 0, 4);
+        salaryGrid.add(new Separator(), 1, 4);
+
+        salaryGrid.add(new Label("Total Monthly Salary:"), 0, 5);
+        Label totalLabel = new Label("Rp " + String.format("%,.0f", totalSalary));
+        totalLabel.setFont(Font.font("Segoe UI", FontWeight.BOLD, 16));
+        totalLabel.setTextFill(Color.web("#27ae60"));
+        salaryGrid.add(totalLabel, 1, 5);
+
+        breakdownBox.getChildren().addAll(breakdownTitle, salaryGrid);
+        return breakdownBox;
+    }
+
+    private TableView<id.ac.stis.pbo.demo1.models.SalaryHistory> createMySalaryHistoryTable() {
+        TableView<id.ac.stis.pbo.demo1.models.SalaryHistory> table = new TableView<>();
+        table.setPrefHeight(300);
+
+        TableColumn<id.ac.stis.pbo.demo1.models.SalaryHistory, String> monthCol = new TableColumn<>("Month");
+        monthCol.setCellValueFactory(cellData ->
+                new javafx.beans.property.SimpleStringProperty(cellData.getValue().getMonthName()));
+
+        TableColumn<id.ac.stis.pbo.demo1.models.SalaryHistory, Integer> yearCol = new TableColumn<>("Year");
+        yearCol.setCellValueFactory(new PropertyValueFactory<>("tahun"));
+
+        TableColumn<id.ac.stis.pbo.demo1.models.SalaryHistory, String> baseCol = new TableColumn<>("Base Salary");
+        baseCol.setCellValueFactory(cellData ->
+                new javafx.beans.property.SimpleStringProperty("Rp " + String.format("%,.0f", cellData.getValue().getBaseSalary())));
+
+        TableColumn<id.ac.stis.pbo.demo1.models.SalaryHistory, String> totalCol = new TableColumn<>("Total Salary");
+        totalCol.setCellValueFactory(cellData ->
+                new javafx.beans.property.SimpleStringProperty("Rp " + String.format("%,.0f", cellData.getValue().getTotalSalary())));
+
+        table.getColumns().addAll(monthCol, yearCol, baseCol, totalCol);
+
+        List<id.ac.stis.pbo.demo1.models.SalaryHistory> mySalaryHistory = DataStore.getSalaryHistoryByEmployee(supervisor.getId());
+        table.setItems(FXCollections.observableArrayList(mySalaryHistory));
+
+        return table;
+    }
+
+    private TableView<id.ac.stis.pbo.demo1.models.SalaryHistory> createTeamSalariesTable() {
+        TableView<id.ac.stis.pbo.demo1.models.SalaryHistory> table = new TableView<>();
+        table.setPrefHeight(500);
+
+        TableColumn<id.ac.stis.pbo.demo1.models.SalaryHistory, String> employeeCol = new TableColumn<>("Employee");
+        employeeCol.setCellValueFactory(new PropertyValueFactory<>("employeeId"));
+
+        TableColumn<id.ac.stis.pbo.demo1.models.SalaryHistory, String> monthCol = new TableColumn<>("Month");
+        monthCol.setCellValueFactory(cellData ->
+                new javafx.beans.property.SimpleStringProperty(cellData.getValue().getMonthName()));
+
+        TableColumn<id.ac.stis.pbo.demo1.models.SalaryHistory, Integer> yearCol = new TableColumn<>("Year");
+        yearCol.setCellValueFactory(new PropertyValueFactory<>("tahun"));
+
+        TableColumn<id.ac.stis.pbo.demo1.models.SalaryHistory, String> baseCol = new TableColumn<>("Base Salary");
+        baseCol.setCellValueFactory(cellData ->
+                new javafx.beans.property.SimpleStringProperty("Rp " + String.format("%,.0f", cellData.getValue().getBaseSalary())));
+
+        TableColumn<id.ac.stis.pbo.demo1.models.SalaryHistory, String> totalCol = new TableColumn<>("Total Salary");
+        totalCol.setCellValueFactory(cellData ->
+                new javafx.beans.property.SimpleStringProperty("Rp " + String.format("%,.0f", cellData.getValue().getTotalSalary())));
+
+        table.getColumns().addAll(employeeCol, monthCol, yearCol, baseCol, totalCol);
+
+        // Get salary history for team members only
+        List<Employee> teamMembers = DataStore.getEmployeesByDivision(supervisor.getDivisi());
+        List<String> teamMemberIds = teamMembers.stream().map(Employee::getId).collect(Collectors.toList());
+
+        List<id.ac.stis.pbo.demo1.models.SalaryHistory> teamSalaryHistory = DataStore.getAllSalaryHistory()
+                .stream()
+                .filter(salary -> teamMemberIds.contains(salary.getEmployeeId()))
+                .collect(Collectors.toList());
+
+        table.setItems(FXCollections.observableArrayList(teamSalaryHistory));
+
+        return table;
+    }
+
+    private void showAllHistoryContent() {
+        contentArea.getChildren().clear();
+
+        VBox content = new VBox(20);
+        content.setAlignment(Pos.TOP_CENTER);
+
+        Label title = new Label("All History & Submissions");
+        title.setFont(Font.font("Segoe UI", FontWeight.BOLD, 24));
+        title.setTextFill(Color.WHITE);
+
+        TabPane tabPane = new TabPane();
+        tabPane.setStyle("""
+            -fx-background-color: white;
+            -fx-background-radius: 15;
+            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 5);
+        """);
+
+        Tab leaveHistoryTab = new Tab("Leave Requests", createAllLeaveRequestsTable());
+        Tab reportHistoryTab = new Tab("My Reports", createMyReportHistoryTable());
+        Tab evaluationHistoryTab = new Tab("Monthly Evaluations", createMonthlyEvaluationHistoryTable());
+
+        tabPane.getTabs().addAll(leaveHistoryTab, reportHistoryTab, evaluationHistoryTab);
+
+        content.getChildren().addAll(title, tabPane);
+        contentArea.getChildren().add(content);
+    }
+
+    private TableView<id.ac.stis.pbo.demo1.models.LeaveRequest> createAllLeaveRequestsTable() {
+        TableView<id.ac.stis.pbo.demo1.models.LeaveRequest> table = new TableView<>();
+        table.setPrefHeight(400);
+
+        TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> employeeCol = new TableColumn<>("Employee");
+        employeeCol.setCellValueFactory(new PropertyValueFactory<>("employeeId"));
+
+        TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> typeCol = new TableColumn<>("Type");
+        typeCol.setCellValueFactory(new PropertyValueFactory<>("leaveType"));
+
+        TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> startDateCol = new TableColumn<>("Start Date");
+        startDateCol.setCellValueFactory(cellData ->
+                new javafx.beans.property.SimpleStringProperty(sdf.format(cellData.getValue().getStartDate())));
+
+        TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> endDateCol = new TableColumn<>("End Date");
+        endDateCol.setCellValueFactory(cellData ->
+                new javafx.beans.property.SimpleStringProperty(sdf.format(cellData.getValue().getEndDate())));
+
+        TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, Integer> daysCol = new TableColumn<>("Days");
+        daysCol.setCellValueFactory(new PropertyValueFactory<>("totalDays"));
+
+        TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> statusCol = new TableColumn<>("Status");
+        statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
+
+        table.getColumns().addAll(employeeCol, typeCol, startDateCol, endDateCol, daysCol, statusCol);
+
+        // Get leave requests for team members and supervisor
+        List<Employee> teamMembers = DataStore.getEmployeesByDivision(supervisor.getDivisi());
+        List<String> teamMemberIds = teamMembers.stream().map(Employee::getId).collect(Collectors.toList());
+
+        List<id.ac.stis.pbo.demo1.models.LeaveRequest> teamLeaveRequests = DataStore.getAllLeaveRequests()
+                .stream()
+                .filter(leave -> teamMemberIds.contains(leave.getEmployeeId()))
+                .collect(Collectors.toList());
+
+        table.setItems(FXCollections.observableArrayList(teamLeaveRequests));
+
+        return table;
     }
 
     private void showAlert(Alert.AlertType type, String title, String message) {
