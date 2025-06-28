@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Calendar;
 
 /**
- * Enhanced Employee Dashboard with comprehensive features and fixes
+ * Enhanced Employee Dashboard with integrated role interactions
  */
 public class EmployeeDashboard extends Application {
     private final Employee employee;
@@ -176,10 +176,13 @@ public class EmployeeDashboard extends Application {
         // Quick actions
         VBox quickActions = createQuickActions();
 
-        // Today's meetings preview
+        // Today's meetings preview - INTEGRATED DATA
         VBox todaysMeetings = createTodaysMeetingsPreview();
 
-        content.getChildren().addAll(titleLabel, infoRow, quickActions, todaysMeetings);
+        // Pending leave requests status
+        VBox leaveStatus = createLeaveRequestStatus();
+
+        content.getChildren().addAll(titleLabel, infoRow, quickActions, todaysMeetings, leaveStatus);
         contentArea.getChildren().add(content);
     }
 
@@ -322,6 +325,7 @@ public class EmployeeDashboard extends Application {
         ListView<String> meetingsList = new ListView<>();
         meetingsList.setPrefHeight(150);
 
+        // INTEGRATED: Get meetings where this employee is a participant
         List<Meeting> todaysMeetings = DataStore.getMeetingsByEmployee(employee.getId());
         Calendar today = Calendar.getInstance();
 
@@ -332,8 +336,13 @@ public class EmployeeDashboard extends Application {
 
             if (meetingCal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
                     meetingCal.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR)) {
+                
+                // Get organizer name
+                Employee organizer = DataStore.getEmployeeById(meeting.getOrganizerId());
+                String organizerName = organizer != null ? organizer.getNama() : "Unknown";
+                
                 meetingItems.add("📅 " + meeting.getTitle() + " at " + meeting.getWaktuMulai() +
-                        " (" + meeting.getLokasi() + ")");
+                        " (" + meeting.getLokasi() + ") - Organized by " + organizerName);
             }
         }
 
@@ -345,6 +354,40 @@ public class EmployeeDashboard extends Application {
 
         meetingsBox.getChildren().addAll(titleLabel, meetingsList);
         return meetingsBox;
+    }
+
+    private VBox createLeaveRequestStatus() {
+        VBox statusBox = new VBox(15);
+        statusBox.setPadding(new Insets(20));
+        statusBox.setStyle("""
+            -fx-background-color: white;
+            -fx-background-radius: 10;
+            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 5, 0, 0, 2);
+        """);
+
+        Label titleLabel = new Label("Leave Request Status");
+        titleLabel.setFont(Font.font("Segoe UI", FontWeight.BOLD, 18));
+        titleLabel.setTextFill(Color.web("#2c3e50"));
+
+        // Get pending leave requests for this employee
+        List<LeaveRequest> myLeaveRequests = DataStore.getLeaveRequestsByEmployee(employee.getId());
+        long pendingCount = myLeaveRequests.stream().filter(lr -> "pending".equals(lr.getStatus())).count();
+        long approvedCount = myLeaveRequests.stream().filter(lr -> "approved".equals(lr.getStatus())).count();
+        long rejectedCount = myLeaveRequests.stream().filter(lr -> "rejected".equals(lr.getStatus())).count();
+
+        GridPane statusGrid = new GridPane();
+        statusGrid.setHgap(20);
+        statusGrid.setVgap(10);
+
+        statusGrid.add(new Label("Pending:"), 0, 0);
+        statusGrid.add(new Label(String.valueOf(pendingCount)), 1, 0);
+        statusGrid.add(new Label("Approved:"), 0, 1);
+        statusGrid.add(new Label(String.valueOf(approvedCount)), 1, 1);
+        statusGrid.add(new Label("Rejected:"), 0, 2);
+        statusGrid.add(new Label(String.valueOf(rejectedCount)), 1, 2);
+
+        statusBox.getChildren().addAll(titleLabel, statusGrid);
+        return statusBox;
     }
 
     private void clockIn() {
@@ -395,7 +438,7 @@ public class EmployeeDashboard extends Application {
         titleLabel.setFont(Font.font("Segoe UI", FontWeight.BOLD, 24));
         titleLabel.setTextFill(Color.web("#2c3e50"));
 
-        // Meetings table
+        // Meetings table with integrated data
         TableView<Meeting> meetingsTable = createMeetingsTable();
 
         content.getChildren().addAll(titleLabel, meetingsTable);
@@ -424,16 +467,20 @@ public class EmployeeDashboard extends Application {
         locationCol.setCellValueFactory(new PropertyValueFactory<>("lokasi"));
         locationCol.setPrefWidth(150);
 
+        TableColumn<Meeting, String> organizerCol = new TableColumn<>("Organizer");
+        organizerCol.setCellValueFactory(cellData -> {
+            Employee organizer = DataStore.getEmployeeById(cellData.getValue().getOrganizerId());
+            return new javafx.beans.property.SimpleStringProperty(organizer != null ? organizer.getNama() : "Unknown");
+        });
+        organizerCol.setPrefWidth(150);
+
         TableColumn<Meeting, String> statusCol = new TableColumn<>("Status");
         statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
         statusCol.setPrefWidth(100);
 
-        TableColumn<Meeting, String> descriptionCol = new TableColumn<>("Description");
-        descriptionCol.setCellValueFactory(new PropertyValueFactory<>("description"));
-        descriptionCol.setPrefWidth(200);
+        table.getColumns().addAll(titleCol, dateCol, timeCol, locationCol, organizerCol, statusCol);
 
-        table.getColumns().addAll(titleCol, dateCol, timeCol, locationCol, statusCol, descriptionCol);
-
+        // INTEGRATED: Get meetings where this employee is a participant
         List<Meeting> myMeetings = DataStore.getMeetingsByEmployee(employee.getId());
         ObservableList<Meeting> meetingData = FXCollections.observableArrayList(myMeetings);
         table.setItems(meetingData);
@@ -462,7 +509,7 @@ public class EmployeeDashboard extends Application {
         """);
         newRequestBtn.setOnAction(e -> showLeaveRequestDialog());
 
-        // Leave requests table
+        // Leave requests table with integrated data
         TableView<LeaveRequest> leaveTable = createLeaveRequestsTable();
 
         content.getChildren().addAll(titleLabel, newRequestBtn, leaveTable);
@@ -490,14 +537,22 @@ public class EmployeeDashboard extends Application {
         TableColumn<LeaveRequest, String> statusCol = new TableColumn<>("Status");
         statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
 
-        TableColumn<LeaveRequest, String> reasonCol = new TableColumn<>("Reason");
-        reasonCol.setCellValueFactory(new PropertyValueFactory<>("reason"));
+        TableColumn<LeaveRequest, String> approverCol = new TableColumn<>("Approver");
+        approverCol.setCellValueFactory(cellData -> {
+            String approverId = cellData.getValue().getApproverId();
+            if (approverId != null) {
+                Employee approver = DataStore.getEmployeeById(approverId);
+                return new javafx.beans.property.SimpleStringProperty(approver != null ? approver.getNama() : "Unknown");
+            }
+            return new javafx.beans.property.SimpleStringProperty("Pending");
+        });
 
         TableColumn<LeaveRequest, String> notesCol = new TableColumn<>("Approval Notes");
         notesCol.setCellValueFactory(new PropertyValueFactory<>("approverNotes"));
 
-        table.getColumns().addAll(typeCol, startDateCol, endDateCol, daysCol, statusCol, reasonCol, notesCol);
+        table.getColumns().addAll(typeCol, startDateCol, endDateCol, daysCol, statusCol, approverCol, notesCol);
 
+        // INTEGRATED: Get leave requests for this employee
         List<LeaveRequest> myLeaveRequests = DataStore.getLeaveRequestsByEmployee(employee.getId());
         ObservableList<LeaveRequest> leaveData = FXCollections.observableArrayList(myLeaveRequests);
         table.setItems(leaveData);
@@ -551,11 +606,19 @@ public class EmployeeDashboard extends Application {
         reasonArea.setPromptText("Enter reason for leave...");
         reasonArea.setPrefRowCount(3);
 
+        // Show who will approve this request
+        String supervisorId = DataStore.getSupervisorByDivision(employee.getDivisi());
+        Employee supervisor = DataStore.getEmployeeById(supervisorId);
+        Label approverInfo = new Label("This request will be sent to: " + 
+                (supervisor != null ? supervisor.getNama() + " (" + supervisor.getJabatan() + ")" : "Your supervisor"));
+        approverInfo.setStyle("-fx-text-fill: #666; -fx-font-style: italic;");
+
         content.getChildren().addAll(
                 new Label("Leave Type:"), leaveTypeCombo,
                 new Label("Start Date (No weekends):"), startDatePicker,
                 new Label("End Date (No weekends):"), endDatePicker,
-                new Label("Reason:"), reasonArea
+                new Label("Reason:"), reasonArea,
+                approverInfo
         );
 
         dialog.getDialogPane().setContent(content);
@@ -582,7 +645,9 @@ public class EmployeeDashboard extends Application {
                     boolean success = DataStore.saveLeaveRequest(employee.getId(), leaveTypeCombo.getValue(),
                             startSqlDate, endSqlDate, reasonArea.getText());
                     if (success) {
-                        showAlert(Alert.AlertType.INFORMATION, "Success", "Leave request submitted successfully!");
+                        showAlert(Alert.AlertType.INFORMATION, "Success", 
+                                "Leave request submitted successfully!\nIt will be reviewed by " + 
+                                (supervisor != null ? supervisor.getNama() : "your supervisor") + ".");
                         showLeaveRequests(); // Refresh
                     } else {
                         showAlert(Alert.AlertType.ERROR, "Error", "Failed to submit leave request.");
@@ -710,6 +775,12 @@ public class EmployeeDashboard extends Application {
         dateCol.setCellValueFactory(cellData ->
                 new javafx.beans.property.SimpleStringProperty(sdf.format(cellData.getValue().getEvaluationDate())));
 
+        TableColumn<EmployeeEvaluation, String> supervisorCol = new TableColumn<>("Supervisor");
+        supervisorCol.setCellValueFactory(cellData -> {
+            Employee supervisor = DataStore.getEmployeeById(cellData.getValue().getSupervisorId());
+            return new javafx.beans.property.SimpleStringProperty(supervisor != null ? supervisor.getNama() : "Unknown");
+        });
+
         TableColumn<EmployeeEvaluation, String> punctualityCol = new TableColumn<>("Punctuality");
         punctualityCol.setCellValueFactory(cellData ->
                 new javafx.beans.property.SimpleStringProperty(df.format(cellData.getValue().getPunctualityScore()) + "%"));
@@ -725,7 +796,7 @@ public class EmployeeDashboard extends Application {
         TableColumn<EmployeeEvaluation, String> commentsCol = new TableColumn<>("Comments");
         commentsCol.setCellValueFactory(new PropertyValueFactory<>("comments"));
 
-        table.getColumns().addAll(dateCol, punctualityCol, attendanceCol, overallCol, commentsCol);
+        table.getColumns().addAll(dateCol, supervisorCol, punctualityCol, attendanceCol, overallCol, commentsCol);
 
         List<EmployeeEvaluation> myEvaluations = DataStore.getEvaluationsByEmployee(employee.getId());
         ObservableList<EmployeeEvaluation> evaluationData = FXCollections.observableArrayList(myEvaluations);

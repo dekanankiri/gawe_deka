@@ -11,7 +11,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
 
 /**
- * Enhanced in-memory data store for the GAWE application with additional methods
+ * Enhanced in-memory data store with proper role interactions
  * Thread-safe implementation using concurrent collections
  */
 public class DataStore {
@@ -323,32 +323,49 @@ public class DataStore {
         List<Employee> allEmployees = getAllEmployees();
         Calendar cal = Calendar.getInstance();
 
-        // Create some sample leave requests
-        for (int i = 0; i < 10; i++) {
+        // Create some sample leave requests with proper role hierarchy
+        for (int i = 0; i < 15; i++) {
             Employee emp = allEmployees.get(i % allEmployees.size());
 
-            cal.set(2024, Calendar.DECEMBER, 20 + i);
+            cal.set(2024, Calendar.DECEMBER, 20 + (i % 10));
             Date startDate = cal.getTime();
-            cal.add(Calendar.DAY_OF_MONTH, 2);
+            cal.add(Calendar.DAY_OF_MONTH, 2 + (i % 3));
             Date endDate = cal.getTime();
 
             LeaveRequest leaveRequest = new LeaveRequest();
             leaveRequest.setId(leaveRequestIdGenerator.getAndIncrement());
             leaveRequest.setEmployeeId(emp.getId());
-            leaveRequest.setLeaveType("Annual Leave");
+            leaveRequest.setLeaveType(i % 4 == 0 ? "Annual Leave" : i % 4 == 1 ? "Sick Leave" : i % 4 == 2 ? "Personal Leave" : "Emergency Leave");
             leaveRequest.setStartDate(startDate);
             leaveRequest.setEndDate(endDate);
-            leaveRequest.setTotalDays(3);
-            leaveRequest.setReason("Family vacation");
-            leaveRequest.setStatus(i < 5 ? "pending" : (i < 8 ? "approved" : "rejected"));
-            leaveRequest.setRequestDate(new Date());
+            leaveRequest.setTotalDays(3 + (i % 3));
+            leaveRequest.setReason("Sample leave request " + (i + 1));
             
-            if (!leaveRequest.getStatus().equals("pending")) {
-                leaveRequest.setApproverId("MNG001");
-                leaveRequest.setApproverNotes(leaveRequest.getStatus().equals("approved") ? "Approved" : "Rejected due to workload");
+            // Set status based on role and create proper approval hierarchy
+            if (i < 5) {
+                leaveRequest.setStatus("pending");
+            } else if (i < 10) {
+                leaveRequest.setStatus("approved");
+                // Set appropriate approver based on employee role
+                if (emp.getRole().equals("pegawai")) {
+                    leaveRequest.setApproverId(getSupervisorByDivision(emp.getDivisi()));
+                } else if (emp.getRole().equals("supervisor")) {
+                    leaveRequest.setApproverId("MNG001");
+                }
+                leaveRequest.setApproverNotes("Approved - good standing employee");
+                leaveRequest.setApprovalDate(new Date());
+            } else {
+                leaveRequest.setStatus("rejected");
+                if (emp.getRole().equals("pegawai")) {
+                    leaveRequest.setApproverId(getSupervisorByDivision(emp.getDivisi()));
+                } else if (emp.getRole().equals("supervisor")) {
+                    leaveRequest.setApproverId("MNG001");
+                }
+                leaveRequest.setApproverNotes("Rejected due to workload constraints");
                 leaveRequest.setApprovalDate(new Date());
             }
             
+            leaveRequest.setRequestDate(new Date());
             leaveRequestList.add(leaveRequest);
         }
     }
@@ -570,7 +587,7 @@ public class DataStore {
         return true;
     }
 
-    // Monthly Evaluation operations - NEW METHODS
+    // Monthly Evaluation operations
     public static boolean hasMonthlyEvaluation(String employeeId, int month, int year) {
         return monthlyEvaluationList.stream()
                 .anyMatch(eval -> eval.getEmployeeId().equals(employeeId) &&
@@ -645,7 +662,7 @@ public class DataStore {
                 .collect(Collectors.toList());
     }
 
-    // NEW METHOD: Get today's attendance for an employee
+    // Get today's attendance for an employee
     public static List<Attendance> getTodayAttendance(String employeeId) {
         Calendar today = Calendar.getInstance();
         today.set(Calendar.HOUR_OF_DAY, 0);
@@ -677,7 +694,7 @@ public class DataStore {
         return true;
     }
 
-    // NEW METHOD: Update clock out time for today's attendance
+    // Update clock out time for today's attendance
     public static boolean updateAttendanceClockOut(String employeeId, String jamKeluar) {
         List<Attendance> todayAttendance = getTodayAttendance(employeeId);
 
@@ -755,7 +772,7 @@ public class DataStore {
         return false;
     }
 
-    // Leave Request operations
+    // Leave Request operations with proper role hierarchy
     public static List<LeaveRequest> getAllLeaveRequests() {
         return new ArrayList<>(leaveRequestList);
     }
@@ -774,6 +791,11 @@ public class DataStore {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Get leave requests that need approval by a specific approver
+     * Employees' requests go to their division supervisor
+     * Supervisors' requests go to manager
+     */
     public static List<LeaveRequest> getLeaveRequestsForApproval(String approverId) {
         Employee approver = employees.get(approverId);
         if (approver == null) return new ArrayList<>();
@@ -789,9 +811,10 @@ public class DataStore {
                         return requester.getRole().equals("pegawai") &&
                                 requester.getDivisi().equals(approver.getDivisi());
                     }
-                    // Managers approve supervisors
+                    // Managers approve supervisors and can approve any employee
                     else if (approver.getRole().equals("manajer")) {
-                        return requester.getRole().equals("supervisor");
+                        return requester.getRole().equals("supervisor") ||
+                               requester.getRole().equals("pegawai");
                     }
                     return false;
                 })
