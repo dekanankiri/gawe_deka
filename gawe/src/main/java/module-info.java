@@ -4,6 +4,8 @@ module id.ac.stis.pbo.demo1 {
     requires com.google.gson;
     requires java.desktop;
     requires java.sql;
+    requires com.zaxxer.hikari;
+    requires org.slf4j;
 
     exports id.ac.stis.pbo.demo1;
     exports id.ac.stis.pbo.demo1.models;

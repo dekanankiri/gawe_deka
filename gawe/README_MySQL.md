@@ -12,7 +12,7 @@ This version of the GAWE application has been modified to use MySQL database ins
   - Host: `localhost`
   - Port: `3306`
   - Username: `root`
-  - Password: `` (empty - change in code if different)
+  - Password: `root` (default password - change in code if different)
 
 ### 2. Java Dependencies
 - Java 17 or later
@@ -53,7 +53,7 @@ private static final String DB_HOST = "localhost";
 private static final String DB_PORT = "3306";
 private static final String DB_NAME = "gawe_db";
 private static final String DB_USER = "root";
-private static final String DB_PASSWORD = ""; // Change this to your MySQL password
+private static final String DB_PASSWORD = "root"; // Default MySQL root password
 ```
 
 ### Connection Pool Settings

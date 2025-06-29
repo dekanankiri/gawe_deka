@@ -32,10 +32,13 @@ public class EmployeeDashboard extends Application {
     private StackPane contentArea;
     private DecimalFormat df = new DecimalFormat("#.##");
     private SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+    private MySQLDataStore dataStore;
 
     public EmployeeDashboard(Employee employee) {
         this.employee = employee;
+        this.dataStore = new MySQLDataStore();
     }
+
 
     @Override
     public void start(Stage stage) {

@@ -22,16 +22,17 @@ public class GaweServer {
     private ExecutorService threadPool;
     private Gson gson;
     private boolean isRunning = false;
+    private MySQLDataStore dataStore;
+    private MySQLDataStore dataStore;
 
     public GaweServer() {
         this.threadPool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
         this.gson = new Gson();
+        this.dataStore = new MySQLDataStore();
     }
 
     public void start() {
         try {
-            // Initialize MySQL data store
-            MySQLDataStore.initialize();
             
             serverSocket = new ServerSocket(PORT);
             isRunning = true;

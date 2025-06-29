@@ -17,12 +17,12 @@ import java.util.stream.Collectors;
  */
 public class MySQLDataStore {
     private static final Logger logger = Logger.getLogger(MySQLDataStore.class.getName());
-    private static MySQLDatabaseManager dbManager;
+    private MySQLDatabaseManager dbManager;
 
     /**
      * Initialize the MySQL data store
      */
-    public static void initialize() {
+    public MySQLDataStore() {
         try {
             dbManager = new MySQLDatabaseManager();
             dbManager.initializeDatabase();
@@ -36,35 +36,35 @@ public class MySQLDataStore {
     /**
      * Close database connections
      */
-    public static void close() {
+    public void close() {
         if (dbManager != null) {
             dbManager.close();
         }
     }
 
     // Authentication
-    public static Employee authenticateUser(String employeeId, String password) {
+    public Employee authenticateUser(String employeeId, String password) {
         return dbManager.authenticateUser(employeeId, password);
     }
 
     // Employee operations
-    public static List<Employee> getAllEmployees() {
+    public List<Employee> getAllEmployees() {
         return dbManager.getAllEmployees();
     }
 
-    public static List<Employee> getEmployeesByRole(String role) {
+    public List<Employee> getEmployeesByRole(String role) {
         return dbManager.getEmployeesByRole(role);
     }
 
-    public static List<Employee> getEmployeesByDivision(String divisi) {
+    public List<Employee> getEmployeesByDivision(String divisi) {
         return dbManager.getEmployeesByDivision(divisi);
     }
 
-    public static Employee getEmployeeById(String id) {
+    public Employee getEmployeeById(String id) {
         return dbManager.getEmployeeById(id);
     }
 
-    public static void updateEmployee(Employee employee) {
+    public void updateEmployee(Employee employee) {
         String query = "UPDATE employees SET nama = ?, role = ?, divisi = ?, jabatan = ?, sisa_cuti = ?, gaji_pokok = ?, kpi_score = ?, supervisor_rating = ?, layoff_risk = ? WHERE id = ?";
         
         try (Connection conn = dbManager.getConnection();
@@ -88,7 +88,7 @@ public class MySQLDataStore {
     }
 
     // KPI operations
-    public static List<KPI> getAllKPI() {
+    public List<KPI> getAllKPI() {
         List<KPI> kpiList = new ArrayList<>();
         String query = "SELECT * FROM kpi ORDER BY tahun DESC, bulan DESC";
         
@@ -106,7 +106,7 @@ public class MySQLDataStore {
         return kpiList;
     }
 
-    public static List<KPI> getKPIByDivision(String divisi) {
+    public List<KPI> getKPIByDivision(String divisi) {
         List<KPI> kpiList = new ArrayList<>();
         String query = "SELECT * FROM kpi WHERE divisi = ? ORDER BY tahun DESC, bulan DESC";
         
@@ -126,7 +126,7 @@ public class MySQLDataStore {
         return kpiList;
     }
 
-    public static boolean saveKPI(String divisi, int bulan, int tahun, double score, String managerId) {
+    public boolean saveKPI(String divisi, int bulan, int tahun, double score, String managerId) {
         String query = "INSERT INTO kpi (divisi, bulan, tahun, score, manager_id) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE score = ?, manager_id = ?";
         
         try (Connection conn = dbManager.getConnection();
@@ -152,7 +152,7 @@ public class MySQLDataStore {
         }
     }
 
-    private static void updateEmployeeKPIScores(String divisi, double kpiScore) {
+    private void updateEmployeeKPIScores(String divisi, double kpiScore) {
         String query = "UPDATE employees SET kpi_score = ?, layoff_risk = ? WHERE divisi = ? AND role = 'pegawai'";
         
         try (Connection conn = dbManager.getConnection();
@@ -169,7 +169,7 @@ public class MySQLDataStore {
     }
 
     // Report operations
-    public static List<Report> getAllReports() {
+    public List<Report> getAllReports() {
         List<Report> reports = new ArrayList<>();
         String query = "SELECT * FROM reports ORDER BY upload_date DESC";
         
@@ -187,7 +187,7 @@ public class MySQLDataStore {
         return reports;
     }
 
-    public static List<Report> getPendingReports() {
+    public List<Report> getPendingReports() {
         List<Report> reports = new ArrayList<>();
         String query = "SELECT * FROM reports WHERE status = 'pending' ORDER BY upload_date DESC";
         
@@ -205,7 +205,7 @@ public class MySQLDataStore {
         return reports;
     }
 
-    public static List<Report> getReportsByDivision(String divisi) {
+    public List<Report> getReportsByDivision(String divisi) {
         List<Report> reports = new ArrayList<>();
         String query = "SELECT * FROM reports WHERE divisi = ? ORDER BY upload_date DESC";
         
@@ -225,7 +225,7 @@ public class MySQLDataStore {
         return reports;
     }
 
-    public static boolean saveReport(String supervisorId, String divisi, int bulan, int tahun, String filePath) {
+    public boolean saveReport(String supervisorId, String divisi, int bulan, int tahun, String filePath) {
         String query = "INSERT INTO reports (supervisor_id, divisi, bulan, tahun, file_path) VALUES (?, ?, ?, ?, ?)";
         
         try (Connection conn = dbManager.getConnection();
@@ -244,7 +244,7 @@ public class MySQLDataStore {
         }
     }
 
-    public static boolean updateReportStatus(int reportId, String status, String managerNotes, String reviewedBy) {
+    public boolean updateReportStatus(int reportId, String status, String managerNotes, String reviewedBy) {
         String query = "UPDATE reports SET status = ?, manager_notes = ?, reviewed_by = ?, reviewed_date = CURRENT_TIMESTAMP WHERE id = ?";
         
         try (Connection conn = dbManager.getConnection();
@@ -263,7 +263,7 @@ public class MySQLDataStore {
     }
 
     // Employee Evaluation operations
-    public static List<EmployeeEvaluation> getAllEvaluations() {
+    public List<EmployeeEvaluation> getAllEvaluations() {
         List<EmployeeEvaluation> evaluations = new ArrayList<>();
         String query = "SELECT * FROM employee_evaluations ORDER BY evaluation_date DESC";
         
@@ -281,7 +281,7 @@ public class MySQLDataStore {
         return evaluations;
     }
 
-    public static List<EmployeeEvaluation> getEvaluationsByEmployee(String employeeId) {
+    public List<EmployeeEvaluation> getEvaluationsByEmployee(String employeeId) {
         List<EmployeeEvaluation> evaluations = new ArrayList<>();
         String query = "SELECT * FROM employee_evaluations WHERE employee_id = ? ORDER BY evaluation_date DESC";
         
@@ -301,7 +301,7 @@ public class MySQLDataStore {
         return evaluations;
     }
 
-    public static List<EmployeeEvaluation> getEvaluationsBySupervisor(String supervisorId) {
+    public List<EmployeeEvaluation> getEvaluationsBySupervisor(String supervisorId) {
         List<EmployeeEvaluation> evaluations = new ArrayList<>();
         String query = "SELECT * FROM employee_evaluations WHERE supervisor_id = ? ORDER BY evaluation_date DESC";
         
@@ -321,7 +321,7 @@ public class MySQLDataStore {
         return evaluations;
     }
 
-    public static boolean saveEmployeeEvaluation(String employeeId, String supervisorId,
+    public boolean saveEmployeeEvaluation(String employeeId, String supervisorId,
                                                  double punctualityScore, double attendanceScore,
                                                  double overallRating, String comments) {
         String query = "INSERT INTO employee_evaluations (employee_id, supervisor_id, punctuality_score, attendance_score, overall_rating, comments) VALUES (?, ?, ?, ?, ?, ?)";
@@ -348,7 +348,7 @@ public class MySQLDataStore {
         }
     }
 
-    private static void updateEmployeeSupervisorRating(String employeeId, double rating) {
+    private void updateEmployeeSupervisorRating(String employeeId, double rating) {
         String query = "UPDATE employees SET supervisor_rating = ?, layoff_risk = ? WHERE id = ?";
         
         try (Connection conn = dbManager.getConnection();
@@ -368,7 +368,7 @@ public class MySQLDataStore {
     }
 
     // Monthly Evaluation operations
-    public static boolean hasMonthlyEvaluation(String employeeId, int month, int year) {
+    public boolean hasMonthlyEvaluation(String employeeId, int month, int year) {
         String query = "SELECT COUNT(*) FROM monthly_evaluations WHERE employee_id = ? AND month = ? AND year = ?";
         
         try (Connection conn = dbManager.getConnection();
@@ -389,7 +389,7 @@ public class MySQLDataStore {
         return false;
     }
 
-    public static boolean saveMonthlyEmployeeEvaluation(String employeeId, String supervisorId,
+    public boolean saveMonthlyEmployeeEvaluation(String employeeId, String supervisorId,
                                                         int month, int year,
                                                         double punctualityScore, double attendanceScore,
                                                         double productivityScore, double overallRating,
@@ -421,7 +421,7 @@ public class MySQLDataStore {
         }
     }
 
-    public static List<MonthlyEvaluation> getAllMonthlyEvaluations() {
+    public List<MonthlyEvaluation> getAllMonthlyEvaluations() {
         List<MonthlyEvaluation> evaluations = new ArrayList<>();
         String query = "SELECT * FROM monthly_evaluations ORDER BY year DESC, month DESC";
         
@@ -439,7 +439,7 @@ public class MySQLDataStore {
         return evaluations;
     }
 
-    public static List<MonthlyEvaluation> getMonthlyEvaluationsByEmployee(String employeeId) {
+    public List<MonthlyEvaluation> getMonthlyEvaluationsByEmployee(String employeeId) {
         List<MonthlyEvaluation> evaluations = new ArrayList<>();
         String query = "SELECT * FROM monthly_evaluations WHERE employee_id = ? ORDER BY year DESC, month DESC";
         
@@ -459,7 +459,7 @@ public class MySQLDataStore {
         return evaluations;
     }
 
-    public static List<MonthlyEvaluation> getMonthlyEvaluationsBySupervisor(String supervisorId) {
+    public List<MonthlyEvaluation> getMonthlyEvaluationsBySupervisor(String supervisorId) {
         List<MonthlyEvaluation> evaluations = new ArrayList<>();
         String query = "SELECT * FROM monthly_evaluations WHERE supervisor_id = ? ORDER BY year DESC, month DESC";
         
@@ -480,7 +480,7 @@ public class MySQLDataStore {
     }
 
     // Attendance operations
-    public static List<Attendance> getAllAttendance() {
+    public List<Attendance> getAllAttendance() {
         List<Attendance> attendanceList = new ArrayList<>();
         String query = "SELECT * FROM attendance ORDER BY tanggal DESC";
         
@@ -498,7 +498,7 @@ public class MySQLDataStore {
         return attendanceList;
     }
 
-    public static List<Attendance> getAttendanceByEmployee(String employeeId) {
+    public List<Attendance> getAttendanceByEmployee(String employeeId) {
         List<Attendance> attendanceList = new ArrayList<>();
         String query = "SELECT * FROM attendance WHERE employee_id = ? ORDER BY tanggal DESC";
         
@@ -518,7 +518,7 @@ public class MySQLDataStore {
         return attendanceList;
     }
 
-    public static List<Attendance> getTodayAttendance(String employeeId) {
+    public List<Attendance> getTodayAttendance(String employeeId) {
         List<Attendance> attendanceList = new ArrayList<>();
         String query = "SELECT * FROM attendance WHERE employee_id = ? AND tanggal = CURDATE()";
         
@@ -538,7 +538,7 @@ public class MySQLDataStore {
         return attendanceList;
     }
 
-    public static boolean saveAttendance(String employeeId, Date tanggal, String jamMasuk, String jamKeluar, String status) {
+    public boolean saveAttendance(String employeeId, Date tanggal, String jamMasuk, String jamKeluar, String status) {
         String query = "INSERT INTO attendance (employee_id, tanggal, jam_masuk, jam_keluar, status, is_late) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE jam_masuk = ?, jam_keluar = ?, status = ?, is_late = ?";
         
         try (Connection conn = dbManager.getConnection();
@@ -567,7 +567,7 @@ public class MySQLDataStore {
         }
     }
 
-    public static boolean updateAttendanceClockOut(String employeeId, String jamKeluar) {
+    public boolean updateAttendanceClockOut(String employeeId, String jamKeluar) {
         String query = "UPDATE attendance SET jam_keluar = ? WHERE employee_id = ? AND tanggal = CURDATE()";
         
         try (Connection conn = dbManager.getConnection();
@@ -584,7 +584,7 @@ public class MySQLDataStore {
         }
     }
 
-    private static boolean isLateArrival(String jamMasuk) {
+    private boolean isLateArrival(String jamMasuk) {
         if (jamMasuk == null) return false;
         try {
             String[] parts = jamMasuk.split(":");
@@ -597,7 +597,7 @@ public class MySQLDataStore {
     }
 
     // Meeting operations
-    public static List<Meeting> getAllMeetings() {
+    public List<Meeting> getAllMeetings() {
         List<Meeting> meetings = new ArrayList<>();
         String query = "SELECT * FROM meetings ORDER BY tanggal ASC, waktu_mulai ASC";
         
@@ -615,7 +615,7 @@ public class MySQLDataStore {
         return meetings;
     }
 
-    public static List<Meeting> getMeetingsByEmployee(String employeeId) {
+    public List<Meeting> getMeetingsByEmployee(String employeeId) {
         List<Meeting> meetings = new ArrayList<>();
         String query = """
             SELECT DISTINCT m.* FROM meetings m 
@@ -641,7 +641,7 @@ public class MySQLDataStore {
         return meetings;
     }
 
-    public static List<Meeting> getUpcomingMeetings() {
+    public List<Meeting> getUpcomingMeetings() {
         List<Meeting> meetings = new ArrayList<>();
         String query = "SELECT * FROM meetings WHERE tanggal >= CURDATE() ORDER BY tanggal ASC, waktu_mulai ASC";
         
@@ -659,7 +659,7 @@ public class MySQLDataStore {
         return meetings;
     }
 
-    public static boolean saveMeeting(String title, String description, Date tanggal, String waktuMulai,
+    public boolean saveMeeting(String title, String description, Date tanggal, String waktuMulai,
                                       String waktuSelesai, String lokasi, String organizerId, List<String> participantIds) {
         String insertMeetingQuery = "INSERT INTO meetings (title, description, tanggal, waktu_mulai, waktu_selesai, lokasi, organizer_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
         String insertParticipantQuery = "INSERT INTO meeting_participants (meeting_id, participant_id) VALUES (?, ?)";
@@ -714,7 +714,7 @@ public class MySQLDataStore {
         }
     }
 
-    public static boolean updateMeetingStatus(int meetingId, String status) {
+    public boolean updateMeetingStatus(int meetingId, String status) {
         String query = "UPDATE meetings SET status = ? WHERE id = ?";
         
         try (Connection conn = dbManager.getConnection();
@@ -731,7 +731,7 @@ public class MySQLDataStore {
     }
 
     // Leave Request operations
-    public static List<LeaveRequest> getAllLeaveRequests() {
+    public List<LeaveRequest> getAllLeaveRequests() {
         List<LeaveRequest> leaveRequests = new ArrayList<>();
         String query = "SELECT * FROM leave_requests ORDER BY request_date DESC";
         
@@ -749,7 +749,7 @@ public class MySQLDataStore {
         return leaveRequests;
     }
 
-    public static List<LeaveRequest> getLeaveRequestsByEmployee(String employeeId) {
+    public List<LeaveRequest> getLeaveRequestsByEmployee(String employeeId) {
         List<LeaveRequest> leaveRequests = new ArrayList<>();
         String query = "SELECT * FROM leave_requests WHERE employee_id = ? ORDER BY request_date DESC";
         
@@ -769,7 +769,7 @@ public class MySQLDataStore {
         return leaveRequests;
     }
 
-    public static List<LeaveRequest> getPendingLeaveRequests() {
+    public List<LeaveRequest> getPendingLeaveRequests() {
         List<LeaveRequest> leaveRequests = new ArrayList<>();
         String query = "SELECT * FROM leave_requests WHERE status = 'pending' ORDER BY request_date ASC";
         
@@ -787,7 +787,7 @@ public class MySQLDataStore {
         return leaveRequests;
     }
 
-    public static List<LeaveRequest> getLeaveRequestsForApproval(String approverId) {
+    public List<LeaveRequest> getLeaveRequestsForApproval(String approverId) {
         List<LeaveRequest> leaveRequests = new ArrayList<>();
         Employee approver = getEmployeeById(approverId);
         if (approver == null) return leaveRequests;
@@ -820,7 +820,7 @@ public class MySQLDataStore {
         return leaveRequests;
     }
 
-    public static boolean saveLeaveRequest(String employeeId, String leaveType, Date startDate, Date endDate, String reason) {
+    public boolean saveLeaveRequest(String employeeId, String leaveType, Date startDate, Date endDate, String reason) {
         // Calculate total days
         LocalDate start = startDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
         LocalDate end = endDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
@@ -848,7 +848,7 @@ public class MySQLDataStore {
         }
     }
 
-    public static boolean approveLeaveRequest(int leaveRequestId, String approverId, String notes) {
+    public boolean approveLeaveRequest(int leaveRequestId, String approverId, String notes) {
         String query = "UPDATE leave_requests SET status = 'approved', approver_id = ?, approver_notes = ?, approval_date = CURRENT_TIMESTAMP WHERE id = ?";
         
         try (Connection conn = dbManager.getConnection();
@@ -875,7 +875,7 @@ public class MySQLDataStore {
         }
     }
 
-    public static boolean rejectLeaveRequest(int leaveRequestId, String approverId, String notes) {
+    public boolean rejectLeaveRequest(int leaveRequestId, String approverId, String notes) {
         String query = "UPDATE leave_requests SET status = 'rejected', approver_id = ?, approver_notes = ?, approval_date = CURRENT_TIMESTAMP WHERE id = ?";
         
         try (Connection conn = dbManager.getConnection();
@@ -892,7 +892,7 @@ public class MySQLDataStore {
         }
     }
 
-    private static LeaveRequest getLeaveRequestById(int id) {
+    private LeaveRequest getLeaveRequestById(int id) {
         String query = "SELECT * FROM leave_requests WHERE id = ?";
         
         try (Connection conn = dbManager.getConnection();
@@ -911,7 +911,7 @@ public class MySQLDataStore {
         return null;
     }
 
-    private static void deductLeaveDays(String employeeId, int days) {
+    private void deductLeaveDays(String employeeId, int days) {
         String query = "UPDATE employees SET sisa_cuti = sisa_cuti - ? WHERE id = ?";
         
         try (Connection conn = dbManager.getConnection();
@@ -998,11 +998,11 @@ public class MySQLDataStore {
     }
 
     // Utility methods
-    public static String getSupervisorByDivision(String divisi) {
+    public String getSupervisorByDivision(String divisi) {
         return dbManager.getSupervisorByDivision(divisi);
     }
 
-    public static Map<String, Object> getDashboardStats() {
+    public Map<String, Object> getDashboardStats() {
         Map<String, Object> stats = new HashMap<>();
 
         List<Employee> allEmployees = getAllEmployees();

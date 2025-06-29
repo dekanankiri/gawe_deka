@@ -24,12 +24,13 @@ import java.util.concurrent.CompletableFuture;
  */
 public class HelloApplication extends Application {
     private GaweServer server;
+    private MySQLDataStore dataStore;
 
     @Override
     public void init() {
         // Initialize MySQL DataStore with sample data
         try {
-            MySQLDataStore.initialize();
+            dataStore = new MySQLDataStore();
             logger.info("MySQL DataStore initialized successfully");
         } catch (Exception e) {
             logger.severe("Failed to initialize MySQL DataStore: " + e.getMessage());
@@ -78,7 +79,9 @@ public class HelloApplication extends Application {
                     System.err.println("Error stopping server: " + ex.getMessage());
                 }
             }
-            MySQLDataStore.close();
+            if (dataStore != null) {
+                dataStore.close();
+            }
             Platform.exit();
         });
         stage.show();
@@ -215,7 +218,7 @@ public class HelloApplication extends Application {
 
         try {
             // Authenticate user using MySQL DataStore
-            Employee employee = MySQLDataStore.authenticateUser(employeeId, password);
+            Employee employee = dataStore.authenticateUser(employeeId, password);
 
             if (employee != null) {
                 // Close login window
@@ -283,7 +286,9 @@ public class HelloApplication extends Application {
                 System.err.println("Error stopping server: " + e.getMessage());
             }
         }
-        MySQLDataStore.close();
+        if (dataStore != null) {
+            dataStore.close();
+        }
     }
 
     public static void main(String[] args) {
