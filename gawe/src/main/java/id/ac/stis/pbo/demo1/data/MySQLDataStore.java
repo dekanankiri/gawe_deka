@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  */
 public class MySQLDataStore {
     private static final Logger logger = Logger.getLogger(MySQLDataStore.class.getName());
-    private MySQLDatabaseManager dbManager;
+    private static MySQLDatabaseManager dbManager;
 
     /**
      * Initialize the MySQL data store
