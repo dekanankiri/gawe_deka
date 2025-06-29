@@ -22,13 +22,12 @@ public class GaweServer {
     private ExecutorService threadPool;
     private Gson gson;
     private boolean isRunning = false;
-    private MySQLDataStore dataStore;
-    private MySQLDataStore dataStore;
+    private final MySQLDataStore dataStore;
 
     public GaweServer() {
         this.threadPool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
         this.gson = new Gson();
-        this.dataStore = new MySQLDataStore();
+        this.dataStore = DataStoreFactory.getMySQLDataStore();
     }
 
     public void start() {
@@ -77,7 +76,9 @@ public class GaweServer {
         }
         
         // Close MySQL connections
-        MySQLDataStore.close();
+        if (dataStore != null) {
+            dataStore.close();
+        }
         
         logger.info("GAWE Server stopped");
     }

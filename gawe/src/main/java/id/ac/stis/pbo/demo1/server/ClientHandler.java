@@ -1,7 +1,9 @@
 package id.ac.stis.pbo.demo1.server;
 
 import id.ac.stis.pbo.demo1.data.MySQLDataStore;
-import id.ac.stis.pbo.demo1.models.*;
+import id.ac.stis.pbo.demo1.models.Employee;
+import id.ac.stis.pbo.demo1.models.ServerRequest;
+import id.ac.stis.pbo.demo1.models.ServerResponse;
 import com.google.gson.Gson;
 import java.io.*;
 import java.net.Socket;
@@ -16,12 +18,12 @@ public class ClientHandler implements Runnable {
     private Gson gson;
     private BufferedReader in;
     private PrintWriter out;
-    private MySQLDataStore dataStore;
+    private final MySQLDataStore dataStore;
 
     public ClientHandler(Socket socket, Gson gson) {
         this.clientSocket = socket;
         this.gson = gson;
-        this.dataStore = new MySQLDataStore();
+        this.dataStore = DataStoreFactory.getMySQLDataStore();
     }
 
     @Override

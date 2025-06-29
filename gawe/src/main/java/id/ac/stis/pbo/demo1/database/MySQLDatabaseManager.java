@@ -1,6 +1,13 @@
 package id.ac.stis.pbo.demo1.database;
 
-import id.ac.stis.pbo.demo1.models.*;
+import id.ac.stis.pbo.demo1.models.Employee;
+import id.ac.stis.pbo.demo1.models.KPI;
+import id.ac.stis.pbo.demo1.models.Report;
+import id.ac.stis.pbo.demo1.models.EmployeeEvaluation;
+import id.ac.stis.pbo.demo1.models.Attendance;
+import id.ac.stis.pbo.demo1.models.Meeting;
+import id.ac.stis.pbo.demo1.models.LeaveRequest;
+import id.ac.stis.pbo.demo1.models.SalaryHistory;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.*;

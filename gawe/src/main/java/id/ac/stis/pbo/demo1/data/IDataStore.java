@@ -1,6 +1,12 @@
 package id.ac.stis.pbo.demo1.data;
 
-import id.ac.stis.pbo.demo1.models.*;
+import id.ac.stis.pbo.demo1.models.Employee;
+import id.ac.stis.pbo.demo1.models.KPI;
+import id.ac.stis.pbo.demo1.models.Report;
+import id.ac.stis.pbo.demo1.models.Attendance;
+import id.ac.stis.pbo.demo1.models.Meeting;
+import id.ac.stis.pbo.demo1.models.LeaveRequest;
+import id.ac.stis.pbo.demo1.models.SalaryHistory;
 import java.util.List;
 import java.util.Map;
 import java.util.Date;

@@ -75,9 +75,8 @@ public class DatabaseConnection {
         }
     }
 
-    @Override
-    protected void finalize() throws Throwable {
-        close();
-        super.finalize();
+    // Register a shutdown hook instead of using finalize()
+    {
+        Runtime.getRuntime().addShutdownHook(new Thread(this::close));
     }
 }

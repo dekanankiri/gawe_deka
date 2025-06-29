@@ -1,7 +1,14 @@
 package id.ac.stis.pbo.demo1.data;
 
 import id.ac.stis.pbo.demo1.database.MySQLDatabaseManager;
-import id.ac.stis.pbo.demo1.models.*;
+import id.ac.stis.pbo.demo1.models.Employee;
+import id.ac.stis.pbo.demo1.models.KPI;
+import id.ac.stis.pbo.demo1.models.Report;
+import id.ac.stis.pbo.demo1.models.EmployeeEvaluation;
+import id.ac.stis.pbo.demo1.models.Attendance;
+import id.ac.stis.pbo.demo1.models.Meeting;
+import id.ac.stis.pbo.demo1.models.LeaveRequest;
+import id.ac.stis.pbo.demo1.models.SalaryHistory;
 import java.sql.*;
 import java.util.*;
 import java.util.Date;
@@ -926,7 +933,7 @@ public class MySQLDataStore {
     }
 
     // Salary History operations
-    public static List<SalaryHistory> getAllSalaryHistory() {
+    public List<SalaryHistory> getAllSalaryHistory() {
         List<SalaryHistory> salaryHistory = new ArrayList<>();
         String query = "SELECT * FROM salary_history ORDER BY tahun DESC, bulan DESC";
         
@@ -944,7 +951,7 @@ public class MySQLDataStore {
         return salaryHistory;
     }
 
-    public static List<SalaryHistory> getSalaryHistoryByEmployee(String employeeId) {
+    public List<SalaryHistory> getSalaryHistoryByEmployee(String employeeId) {
         List<SalaryHistory> salaryHistory = new ArrayList<>();
         String query = "SELECT * FROM salary_history WHERE employee_id = ? ORDER BY tahun DESC, bulan DESC";
         
@@ -964,7 +971,7 @@ public class MySQLDataStore {
         return salaryHistory;
     }
 
-    public static boolean saveSalaryHistory(String employeeId, int bulan, int tahun, double baseSalary,
+    public boolean saveSalaryHistory(String employeeId, int bulan, int tahun, double baseSalary,
                                             double kpiBonus, double supervisorBonus, double penalty,
                                             double totalSalary, double kpiScore, double supervisorRating) {
         String query = "INSERT INTO salary_history (employee_id, bulan, tahun, base_salary, kpi_bonus, supervisor_bonus, penalty, total_salary, kpi_score, supervisor_rating) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE base_salary = ?, kpi_bonus = ?, supervisor_bonus = ?, penalty = ?, total_salary = ?, kpi_score = ?, supervisor_rating = ?";
@@ -1184,7 +1191,7 @@ public class MySQLDataStore {
         return leaveRequest;
     }
 
-    private static SalaryHistory mapResultSetToSalaryHistory(ResultSet rs) throws SQLException {
+    private SalaryHistory mapResultSetToSalaryHistory(ResultSet rs) throws SQLException {
         SalaryHistory salary = new SalaryHistory();
         salary.setId(rs.getInt("id"));
         salary.setEmployeeId(rs.getString("employee_id"));
