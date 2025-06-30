@@ -1,6 +1,7 @@
 package id.ac.stis.pbo.demo1.ui;
 
-import id.ac.stis.pbo.demo1.data.DataStore;
+import id.ac.stis.pbo.demo1.data.DataStoreFactory;
+import id.ac.stis.pbo.demo1.data.MySQLDataStore;
 import id.ac.stis.pbo.demo1.models.Employee;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
@@ -31,12 +32,14 @@ import java.text.SimpleDateFormat;
  */
 public class SupervisorDashboard extends Application {
     private final Employee supervisor;
+    private final MySQLDataStore dataStore;
     private StackPane contentArea;
     private DecimalFormat df = new DecimalFormat("#.##");
     private SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
 
     public SupervisorDashboard(Employee supervisor) {
         this.supervisor = supervisor;
+        this.dataStore = DataStoreFactory.getMySQLDataStore();
     }
 
     @Override
@@ -241,7 +244,7 @@ public class SupervisorDashboard extends Application {
 
     private boolean hasAttendanceToday() {
         try {
-            List<id.ac.stis.pbo.demo1.models.Attendance> todayAttendance = DataStore.getTodayAttendance(supervisor.getId());
+            List<id.ac.stis.pbo.demo1.models.Attendance> todayAttendance = dataStore.getTodayAttendance(supervisor.getId());
             return !todayAttendance.isEmpty();
         } catch (Exception e) {
             return false;
@@ -250,7 +253,7 @@ public class SupervisorDashboard extends Application {
 
     private boolean hasCompletedAttendanceToday() {
         try {
-            List<id.ac.stis.pbo.demo1.models.Attendance> todayAttendance = DataStore.getTodayAttendance(supervisor.getId());
+            List<id.ac.stis.pbo.demo1.models.Attendance> todayAttendance = dataStore.getTodayAttendance(supervisor.getId());
             return !todayAttendance.isEmpty() &&
                     todayAttendance.get(0).getJamKeluar() != null;
         } catch (Exception e) {
@@ -267,7 +270,7 @@ public class SupervisorDashboard extends Application {
         LocalTime now = LocalTime.now();
         String timeStr = String.format("%02d:%02d", now.getHour(), now.getMinute());
 
-        boolean success = DataStore.saveAttendance(supervisor.getId(), new Date(), timeStr, null, "hadir");
+        boolean success = dataStore.saveAttendance(supervisor.getId(), new Date(), timeStr, null, "hadir");
         if (success) {
             showAlert(Alert.AlertType.INFORMATION, "Clock In", "Successfully clocked in at " + timeStr);
             showDashboardContent(); // Refresh to update buttons
@@ -285,7 +288,7 @@ public class SupervisorDashboard extends Application {
         LocalTime now = LocalTime.now();
         String timeStr = String.format("%02d:%02d", now.getHour(), now.getMinute());
 
-        boolean success = DataStore.updateAttendanceClockOut(supervisor.getId(), timeStr);
+        boolean success = dataStore.updateAttendanceClockOut(supervisor.getId(), timeStr);
         if (success) {
             showAlert(Alert.AlertType.INFORMATION, "Clock Out", "Successfully clocked out at " + timeStr);
             showDashboardContent(); // Refresh to update buttons
@@ -299,7 +302,7 @@ public class SupervisorDashboard extends Application {
         statsContainer.setAlignment(Pos.CENTER);
 
         // Get team members count
-        List<Employee> teamMembers = DataStore.getEmployeesByDivision(supervisor.getDivisi()).stream()
+        List<Employee> teamMembers = dataStore.getEmployeesByDivision(supervisor.getDivisi()).stream()
                 .filter(emp -> emp.getRole().equals("pegawai"))
                 .toList();
 
@@ -424,7 +427,7 @@ public class SupervisorDashboard extends Application {
 
         table.getColumns().addAll(dateCol, clockInCol, clockOutCol, statusCol);
 
-        List<id.ac.stis.pbo.demo1.models.Attendance> myAttendance = DataStore.getAttendanceByEmployee(supervisor.getId());
+        List<id.ac.stis.pbo.demo1.models.Attendance> myAttendance = dataStore.getAttendanceByEmployee(supervisor.getId());
         table.setItems(FXCollections.observableArrayList(myAttendance));
         table.setPrefHeight(400);
 
@@ -482,7 +485,7 @@ public class SupervisorDashboard extends Application {
 
         table.getColumns().addAll(titleCol, dateCol, timeCol, locationCol);
 
-        List<id.ac.stis.pbo.demo1.models.Meeting> myMeetings = DataStore.getMeetingsByEmployee(supervisor.getId());
+        List<id.ac.stis.pbo.demo1.models.Meeting> myMeetings = dataStore.getMeetingsByEmployee(supervisor.getId());
         table.setItems(FXCollections.observableArrayList(myMeetings));
         table.setPrefHeight(400);
 
@@ -521,7 +524,7 @@ public class SupervisorDashboard extends Application {
         teamMembersList.setPrefHeight(150);
         teamMembersList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
-        List<Employee> teamMembers = DataStore.getEmployeesByDivision(supervisor.getDivisi());
+        List<Employee> teamMembers = dataStore.getEmployeesByDivision(supervisor.getDivisi());
         teamMembersList.setItems(FXCollections.observableArrayList(teamMembers));
 
         content.getChildren().addAll(
@@ -550,7 +553,7 @@ public class SupervisorDashboard extends Application {
                     // Add supervisor as organizer
                     selectedParticipants.add(supervisor.getId());
 
-                    boolean success = DataStore.saveMeeting(
+                    boolean success = dataStore.saveMeeting(
                             titleField.getText(),
                             descriptionArea.getText(),
                             meetingDate,
@@ -630,7 +633,7 @@ public class SupervisorDashboard extends Application {
 
         table.getColumns().addAll(typeCol, startDateCol, endDateCol, daysCol, statusCol, notesCol);
 
-        List<id.ac.stis.pbo.demo1.models.LeaveRequest> myLeaveRequests = DataStore.getLeaveRequestsByEmployee(supervisor.getId());
+        List<id.ac.stis.pbo.demo1.models.LeaveRequest> myLeaveRequests = dataStore.getLeaveRequestsByEmployee(supervisor.getId());
         table.setItems(FXCollections.observableArrayList(myLeaveRequests));
         table.setPrefHeight(400);
 
@@ -710,7 +713,7 @@ public class SupervisorDashboard extends Application {
                     Date startSqlDate = java.sql.Date.valueOf(startDate);
                     Date endSqlDate = java.sql.Date.valueOf(endDate);
 
-                    boolean success = DataStore.saveLeaveRequest(supervisor.getId(), leaveTypeCombo.getValue(),
+                    boolean success = dataStore.saveLeaveRequest(supervisor.getId(), leaveTypeCombo.getValue(),
                             startSqlDate, endSqlDate, reasonArea.getText());
                     if (success) {
                         showAlert(Alert.AlertType.INFORMATION, "Success", "Leave request submitted successfully!");
@@ -780,7 +783,7 @@ public class SupervisorDashboard extends Application {
         table.getColumns().addAll(nameCol, positionCol, kpiCol, ratingCol, statusCol);
 
         // Load team members (employees in the same division)
-        List<Employee> teamMembers = DataStore.getAllEmployees().stream()
+        List<Employee> teamMembers = dataStore.getAllEmployees().stream()
                 .filter(emp -> emp.getDivisi().equals(supervisor.getDivisi()) &&
                         emp.getRole().equals("pegawai"))
                 .toList();
@@ -837,7 +840,7 @@ public class SupervisorDashboard extends Application {
         employeeCombo.setPromptText("Select Employee");
         employeeCombo.setPrefWidth(300);
 
-        List<Employee> teamMembers = DataStore.getAllEmployees().stream()
+        List<Employee> teamMembers = dataStore.getAllEmployees().stream()
                 .filter(emp -> emp.getDivisi().equals(supervisor.getDivisi()) &&
                         emp.getRole().equals("pegawai"))
                 .toList();
@@ -945,7 +948,7 @@ public class SupervisorDashboard extends Application {
             if (selectedEmployee != null && selectedMonth != null && selectedYear != null) {
                 try {
                     // Check if evaluation already exists for this month
-                    boolean alreadyExists = DataStore.hasMonthlyEvaluation(
+                    boolean alreadyExists = dataStore.hasMonthlyEvaluation(
                             selectedEmployee.getId(),
                             monthCombo.getSelectionModel().getSelectedIndex() + 1,
                             selectedYear
@@ -958,7 +961,7 @@ public class SupervisorDashboard extends Application {
                         return;
                     }
 
-                    boolean success = DataStore.saveMonthlyEmployeeEvaluation(
+                    boolean success = dataStore.saveMonthlyEmployeeEvaluation(
                             selectedEmployee.getId(),
                             supervisor.getId(),
                             monthCombo.getSelectionModel().getSelectedIndex() + 1,
@@ -1028,7 +1031,7 @@ public class SupervisorDashboard extends Application {
         table.getColumns().addAll(employeeCol, monthCol, yearCol, overallCol, dateCol);
 
         // Get monthly evaluations by this supervisor
-        List<DataStore.MonthlyEvaluation> monthlyEvaluations = DataStore.getMonthlyEvaluationsBySupervisor(supervisor.getId());
+        List<DataStore.MonthlyEvaluation> monthlyEvaluations = dataStore.getMonthlyEvaluationsBySupervisor(supervisor.getId());
         table.setItems(FXCollections.observableArrayList(monthlyEvaluations));
 
         return table;
@@ -1137,7 +1140,7 @@ public class SupervisorDashboard extends Application {
                 int monthIndex = monthCombo.getSelectionModel().getSelectedIndex() + 1;
                 int year = yearCombo.getValue();
 
-                boolean success = DataStore.saveReport(
+                boolean success = dataStore.saveReport(
                         supervisor.getId(),
                         supervisor.getDivisi(),
                         monthIndex,
@@ -1186,7 +1189,7 @@ public class SupervisorDashboard extends Application {
 
         table.getColumns().addAll(monthCol, yearCol, statusCol, uploadDateCol, notesCol);
 
-        List<id.ac.stis.pbo.demo1.models.Report> myReports = DataStore.getReportsByDivision(supervisor.getDivisi())
+        List<id.ac.stis.pbo.demo1.models.Report> myReports = dataStore.getReportsByDivision(supervisor.getDivisi())
                 .stream()
                 .filter(report -> report.getSupervisorId().equals(supervisor.getId()))
                 .collect(Collectors.toList());
@@ -1460,10 +1463,10 @@ public class SupervisorDashboard extends Application {
         table.getColumns().addAll(employeeCol, monthCol, yearCol, baseCol, totalCol);
 
         // Get salary history for team members only
-        List<Employee> teamMembers = DataStore.getEmployeesByDivision(supervisor.getDivisi());
+        List<Employee> teamMembers = dataStore.getEmployeesByDivision(supervisor.getDivisi());
         List<String> teamMemberIds = teamMembers.stream().map(Employee::getId).collect(Collectors.toList());
 
-        List<id.ac.stis.pbo.demo1.models.SalaryHistory> teamSalaryHistory = DataStore.getAllSalaryHistory()
+        List<id.ac.stis.pbo.demo1.models.SalaryHistory> teamSalaryHistory = dataStore.getAllSalaryHistory()
                 .stream()
                 .filter(salary -> teamMemberIds.contains(salary.getEmployeeId()))
                 .collect(Collectors.toList());
@@ -1527,10 +1530,10 @@ public class SupervisorDashboard extends Application {
         table.getColumns().addAll(employeeCol, typeCol, startDateCol, endDateCol, daysCol, statusCol);
 
         // Get leave requests for team members and supervisor
-        List<Employee> teamMembers = DataStore.getEmployeesByDivision(supervisor.getDivisi());
+        List<Employee> teamMembers = dataStore.getEmployeesByDivision(supervisor.getDivisi());
         List<String> teamMemberIds = teamMembers.stream().map(Employee::getId).collect(Collectors.toList());
 
-        List<id.ac.stis.pbo.demo1.models.LeaveRequest> teamLeaveRequests = DataStore.getAllLeaveRequests()
+        List<id.ac.stis.pbo.demo1.models.LeaveRequest> teamLeaveRequests = dataStore.getAllLeaveRequests()
                 .stream()
                 .filter(leave -> teamMemberIds.contains(leave.getEmployeeId()))
                 .collect(Collectors.toList());
