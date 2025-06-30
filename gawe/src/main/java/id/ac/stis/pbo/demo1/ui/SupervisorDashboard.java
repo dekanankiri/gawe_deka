@@ -421,13 +421,13 @@ public class SupervisorDashboard extends Application {
                 new javafx.beans.property.SimpleStringProperty(sdf.format(cellData.getValue().getTanggal())));
 
         TableColumn<id.ac.stis.pbo.demo1.models.Attendance, String> clockInCol = new TableColumn<>("Clock In");
-        clockInCol.setCellValueFactory(new PropertyValueFactory<>("jamMasuk"));
+        clockInCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.Attendance, String>("jamMasuk"));
 
         TableColumn<id.ac.stis.pbo.demo1.models.Attendance, String> clockOutCol = new TableColumn<>("Clock Out");
-        clockOutCol.setCellValueFactory(new PropertyValueFactory<>("jamKeluar"));
+        clockOutCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.Attendance, String>("jamKeluar"));
 
         TableColumn<id.ac.stis.pbo.demo1.models.Attendance, String> statusCol = new TableColumn<>("Status");
-        statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
+        statusCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.Attendance, String>("status"));
 
         table.getColumns().addAll(dateCol, clockInCol, clockOutCol, statusCol);
 
@@ -473,7 +473,7 @@ public class SupervisorDashboard extends Application {
         """);
 
         TableColumn<id.ac.stis.pbo.demo1.models.Meeting, String> titleCol = new TableColumn<>("Title");
-        titleCol.setCellValueFactory(new PropertyValueFactory<>("title"));
+        titleCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.Meeting, String>("title"));
 
         TableColumn<id.ac.stis.pbo.demo1.models.Meeting, String> dateCol = new TableColumn<>("Date");
         dateCol.setCellValueFactory(cellData ->
@@ -485,7 +485,7 @@ public class SupervisorDashboard extends Application {
                         cellData.getValue().getWaktuMulai() + " - " + cellData.getValue().getWaktuSelesai()));
 
         TableColumn<id.ac.stis.pbo.demo1.models.Meeting, String> locationCol = new TableColumn<>("Location");
-        locationCol.setCellValueFactory(new PropertyValueFactory<>("lokasi"));
+        locationCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.Meeting, String>("lokasi"));
 
         table.getColumns().addAll(titleCol, dateCol, timeCol, locationCol);
 
@@ -616,7 +616,7 @@ public class SupervisorDashboard extends Application {
         """);
 
         TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> typeCol = new TableColumn<>("Type");
-        typeCol.setCellValueFactory(new PropertyValueFactory<>("leaveType"));
+        typeCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.LeaveRequest, String>("leaveType"));
 
         TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> startDateCol = new TableColumn<>("Start Date");
         startDateCol.setCellValueFactory(cellData ->
@@ -627,13 +627,13 @@ public class SupervisorDashboard extends Application {
                 new javafx.beans.property.SimpleStringProperty(sdf.format(cellData.getValue().getEndDate())));
 
         TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, Integer> daysCol = new TableColumn<>("Days");
-        daysCol.setCellValueFactory(new PropertyValueFactory<>("totalDays"));
+        daysCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.LeaveRequest, Integer>("totalDays"));
 
         TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> statusCol = new TableColumn<>("Status");
-        statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
+        statusCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.LeaveRequest, String>("status"));
 
         TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> notesCol = new TableColumn<>("Approval Notes");
-        notesCol.setCellValueFactory(new PropertyValueFactory<>("approverNotes"));
+        notesCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.LeaveRequest, String>("approverNotes"));
 
         table.getColumns().addAll(typeCol, startDateCol, endDateCol, daysCol, statusCol, notesCol);
 
@@ -759,23 +759,26 @@ public class SupervisorDashboard extends Application {
 
         // Create columns
         TableColumn<Employee, String> nameCol = new TableColumn<>("Name");
-        nameCol.setCellValueFactory(new PropertyValueFactory<>("nama"));
+        nameCol.setCellValueFactory(new PropertyValueFactory<Employee, String>("nama"));
         nameCol.setPrefWidth(200);
 
         TableColumn<Employee, String> positionCol = new TableColumn<>("Position");
-        positionCol.setCellValueFactory(new PropertyValueFactory<>("jabatan"));
+        positionCol.setCellValueFactory(new PropertyValueFactory<Employee, String>("jabatan"));
         positionCol.setPrefWidth(180);
 
+        @SuppressWarnings("unchecked")
         TableColumn<Employee, String> kpiCol = new TableColumn<>("KPI Score");
         kpiCol.setCellValueFactory(cellData ->
                 new javafx.beans.property.SimpleStringProperty(String.format("%.1f%%", cellData.getValue().getKpiScore())));
         kpiCol.setPrefWidth(100);
 
+        @SuppressWarnings("unchecked")
         TableColumn<Employee, String> ratingCol = new TableColumn<>("Supervisor Rating");
         ratingCol.setCellValueFactory(cellData ->
                 new javafx.beans.property.SimpleStringProperty(String.format("%.1f%%", cellData.getValue().getSupervisorRating())));
         ratingCol.setPrefWidth(150);
 
+        @SuppressWarnings("unchecked")
         TableColumn<Employee, String> statusCol = new TableColumn<>("Status");
         statusCol.setCellValueFactory(cellData -> {
             Employee emp = cellData.getValue();
@@ -1012,7 +1015,7 @@ public class SupervisorDashboard extends Application {
         table.setPrefHeight(400);
 
         TableColumn<MySQLDataStore.MonthlyEvaluation, String> employeeCol = new TableColumn<>("Employee");
-        employeeCol.setCellValueFactory(new PropertyValueFactory<>("employeeId"));
+        employeeCol.setCellValueFactory(new PropertyValueFactory<MySQLDataStore.MonthlyEvaluation, String>("employeeId"));
 
         TableColumn<MySQLDataStore.MonthlyEvaluation, String> monthCol = new TableColumn<>("Month");
         monthCol.setCellValueFactory(cellData -> {
@@ -1022,7 +1025,7 @@ public class SupervisorDashboard extends Application {
         });
 
         TableColumn<MySQLDataStore.MonthlyEvaluation, Integer> yearCol = new TableColumn<>("Year");
-        yearCol.setCellValueFactory(new PropertyValueFactory<>("year"));
+        yearCol.setCellValueFactory(new PropertyValueFactory<MySQLDataStore.MonthlyEvaluation, Integer>("year"));
 
         TableColumn<MySQLDataStore.MonthlyEvaluation, String> overallCol = new TableColumn<>("Overall Rating");
         overallCol.setCellValueFactory(cellData ->
@@ -1179,10 +1182,10 @@ public class SupervisorDashboard extends Application {
                 new javafx.beans.property.SimpleStringProperty(cellData.getValue().getMonthName()));
 
         TableColumn<id.ac.stis.pbo.demo1.models.Report, Integer> yearCol = new TableColumn<>("Year");
-        yearCol.setCellValueFactory(new PropertyValueFactory<>("tahun"));
+        yearCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.Report, Integer>("tahun"));
 
         TableColumn<id.ac.stis.pbo.demo1.models.Report, String> statusCol = new TableColumn<>("Status");
-        statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
+        statusCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.Report, String>("status"));
 
         TableColumn<id.ac.stis.pbo.demo1.models.Report, String> uploadDateCol = new TableColumn<>("Upload Date");
         uploadDateCol.setCellValueFactory(cellData ->
@@ -1424,7 +1427,7 @@ public class SupervisorDashboard extends Application {
                 new javafx.beans.property.SimpleStringProperty(cellData.getValue().getMonthName()));
 
         TableColumn<id.ac.stis.pbo.demo1.models.SalaryHistory, Integer> yearCol = new TableColumn<>("Year");
-        yearCol.setCellValueFactory(new PropertyValueFactory<>("tahun"));
+        yearCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.SalaryHistory, Integer>("tahun"));
 
         TableColumn<id.ac.stis.pbo.demo1.models.SalaryHistory, String> baseCol = new TableColumn<>("Base Salary");
         baseCol.setCellValueFactory(cellData ->
@@ -1447,14 +1450,14 @@ public class SupervisorDashboard extends Application {
         table.setPrefHeight(500);
 
         TableColumn<id.ac.stis.pbo.demo1.models.SalaryHistory, String> employeeCol = new TableColumn<>("Employee");
-        employeeCol.setCellValueFactory(new PropertyValueFactory<>("employeeId"));
+        employeeCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.SalaryHistory, String>("employeeId"));
 
         TableColumn<id.ac.stis.pbo.demo1.models.SalaryHistory, String> monthCol = new TableColumn<>("Month");
         monthCol.setCellValueFactory(cellData ->
                 new javafx.beans.property.SimpleStringProperty(cellData.getValue().getMonthName()));
 
         TableColumn<id.ac.stis.pbo.demo1.models.SalaryHistory, Integer> yearCol = new TableColumn<>("Year");
-        yearCol.setCellValueFactory(new PropertyValueFactory<>("tahun"));
+        yearCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.SalaryHistory, Integer>("tahun"));
 
         TableColumn<id.ac.stis.pbo.demo1.models.SalaryHistory, String> baseCol = new TableColumn<>("Base Salary");
         baseCol.setCellValueFactory(cellData ->
@@ -1653,10 +1656,10 @@ public class SupervisorDashboard extends Application {
         table.setPrefHeight(400);
 
         TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> employeeCol = new TableColumn<>("Employee");
-        employeeCol.setCellValueFactory(new PropertyValueFactory<>("employeeId"));
+        employeeCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.LeaveRequest, String>("employeeId"));
 
         TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> typeCol = new TableColumn<>("Type");
-        typeCol.setCellValueFactory(new PropertyValueFactory<>("leaveType"));
+        typeCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.LeaveRequest, String>("leaveType"));
 
         TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> startDateCol = new TableColumn<>("Start Date");
         startDateCol.setCellValueFactory(cellData ->
@@ -1667,10 +1670,10 @@ public class SupervisorDashboard extends Application {
                 new javafx.beans.property.SimpleStringProperty(sdf.format(cellData.getValue().getEndDate())));
 
         TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, Integer> daysCol = new TableColumn<>("Days");
-        daysCol.setCellValueFactory(new PropertyValueFactory<>("totalDays"));
+        daysCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.LeaveRequest, Integer>("totalDays"));
 
         TableColumn<id.ac.stis.pbo.demo1.models.LeaveRequest, String> statusCol = new TableColumn<>("Status");
-        statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
+        statusCol.setCellValueFactory(new PropertyValueFactory<id.ac.stis.pbo.demo1.models.LeaveRequest, String>("status"));
 
         table.getColumns().addAll(employeeCol, typeCol, startDateCol, endDateCol, daysCol, statusCol);
 

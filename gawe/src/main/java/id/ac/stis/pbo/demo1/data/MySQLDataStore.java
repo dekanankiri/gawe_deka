@@ -1084,7 +1084,7 @@ public class MySQLDataStore {
     }
 
     // Helper methods to map ResultSet to model objects
-    private static KPI mapResultSetToKPI(ResultSet rs) throws SQLException {
+    private KPI mapResultSetToKPI(ResultSet rs) throws SQLException {
         KPI kpi = new KPI();
         kpi.setId(rs.getInt("id"));
         kpi.setDivisi(rs.getString("divisi"));
@@ -1097,7 +1097,7 @@ public class MySQLDataStore {
         return kpi;
     }
 
-    private static Report mapResultSetToReport(ResultSet rs) throws SQLException {
+    private Report mapResultSetToReport(ResultSet rs) throws SQLException {
         Report report = new Report();
         report.setId(rs.getInt("id"));
         report.setSupervisorId(rs.getString("supervisor_id"));
@@ -1113,7 +1113,7 @@ public class MySQLDataStore {
         return report;
     }
 
-    private static EmployeeEvaluation mapResultSetToEmployeeEvaluation(ResultSet rs) throws SQLException {
+    private EmployeeEvaluation mapResultSetToEmployeeEvaluation(ResultSet rs) throws SQLException {
         EmployeeEvaluation eval = new EmployeeEvaluation();
         eval.setId(rs.getInt("id"));
         eval.setEmployeeId(rs.getString("employee_id"));
@@ -1126,7 +1126,7 @@ public class MySQLDataStore {
         return eval;
     }
 
-    private static MonthlyEvaluation mapResultSetToMonthlyEvaluation(ResultSet rs) throws SQLException {
+    private MonthlyEvaluation mapResultSetToMonthlyEvaluation(ResultSet rs) throws SQLException {
         MonthlyEvaluation eval = new MonthlyEvaluation();
         eval.setId(rs.getInt("id"));
         eval.setEmployeeId(rs.getString("employee_id"));
@@ -1142,7 +1142,7 @@ public class MySQLDataStore {
         return eval;
     }
 
-    private static Attendance mapResultSetToAttendance(ResultSet rs) throws SQLException {
+    private Attendance mapResultSetToAttendance(ResultSet rs) throws SQLException {
         Attendance attendance = new Attendance();
         attendance.setId(rs.getInt("id"));
         attendance.setEmployeeId(rs.getString("employee_id"));
@@ -1164,7 +1164,7 @@ public class MySQLDataStore {
         return attendance;
     }
 
-    private static Meeting mapResultSetToMeeting(ResultSet rs) throws SQLException {
+    private Meeting mapResultSetToMeeting(ResultSet rs) throws SQLException {
         Meeting meeting = new Meeting();
         meeting.setId(rs.getInt("id"));
         meeting.setTitle(rs.getString("title"));
@@ -1192,7 +1192,7 @@ public class MySQLDataStore {
         return meeting;
     }
 
-    private static List<String> getMeetingParticipants(int meetingId) {
+    private List<String> getMeetingParticipants(int meetingId) {
         List<String> participants = new ArrayList<>();
         String query = "SELECT participant_id FROM meeting_participants WHERE meeting_id = ?";
         
@@ -1212,7 +1212,7 @@ public class MySQLDataStore {
         return participants;
     }
 
-    private static LeaveRequest mapResultSetToLeaveRequest(ResultSet rs) throws SQLException {
+    private LeaveRequest mapResultSetToLeaveRequest(ResultSet rs) throws SQLException {
         LeaveRequest leaveRequest = new LeaveRequest();
         leaveRequest.setId(rs.getInt("id"));
         leaveRequest.setEmployeeId(rs.getString("employee_id"));
