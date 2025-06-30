@@ -9,7 +9,7 @@ public class DatabaseConfig {
     public static final String DB_PORT = "3306";
     public static final String DB_NAME = "gawe_db";
     public static final String DB_USER = "root";
-    public static final String DB_PASSWORD = "root";
+    public static final String DB_PASSWORD = "";
     
     // Connection pool settings
     public static final int MAX_POOL_SIZE = 20;

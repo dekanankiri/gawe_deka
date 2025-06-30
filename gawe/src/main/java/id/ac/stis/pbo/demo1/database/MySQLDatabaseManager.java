@@ -26,9 +26,9 @@ public class MySQLDatabaseManager {
     private static final String DB_PORT = "3306";
     private static final String DB_NAME = "gawe_db";
     private static final String DB_USER = "root";
-    private static final String DB_PASSWORD = "root"; // Default MySQL root password
+    private static final String DB_PASSWORD = ""; // Default MySQL root password
     
-    private HikariDataSource dataSource;
+    public HikariDataSource dataSource;
 
     public MySQLDatabaseManager() {
         initializeConnectionPool();
