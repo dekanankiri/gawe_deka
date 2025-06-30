@@ -90,8 +90,16 @@ public class EmployeeDashboard extends Application {
             -fx-font-weight: bold;
         """);
         logoutBtn.setOnAction(e -> {
+            // Just close the current stage and show login window
             primaryStage.close();
-            new id.ac.stis.pbo.demo1.HelloApplication().start(new Stage());
+            Platform.runLater(() -> {
+                try {
+                    new id.ac.stis.pbo.demo1.HelloApplication().start(new Stage());
+                } catch (Exception ex) {
+                    System.err.println("Error restarting application: " + ex.getMessage());
+                    ex.printStackTrace();
+                }
+            });
         });
 
         header.getChildren().addAll(titleLabel, spacer, userLabel, logoutBtn);

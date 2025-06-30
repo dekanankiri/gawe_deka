@@ -24,43 +24,75 @@ import java.util.concurrent.CompletableFuture;
  */
 public class HelloApplication extends Application {
     private GaweServer server;
-    private MySQLDataStore dataStore;
+    private static MySQLDataStore dataStore; // Make dataStore static to persist across instances
 
     @Override
     public void init() {
-        // Initialize MySQL DataStore with sample data
-        try {
-            dataStore = new MySQLDataStore();
-            logger.info("MySQL DataStore initialized successfully");
-        } catch (Exception e) {
-            logger.severe("Failed to initialize MySQL DataStore: " + e.getMessage());
-            // Show error dialog and exit
-            Platform.runLater(() -> {
-                Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setTitle("Database Connection Error");
-                alert.setHeaderText("Failed to connect to MySQL database");
-                alert.setContentText("Please ensure MySQL is running and the database configuration is correct.\n\nError: " + e.getMessage());
-                alert.showAndWait();
-                Platform.exit();
-            });
-            return;
+        System.out.println("Initializing application...");
+        
+        // Initialize MySQL DataStore if not already initialized
+        if (dataStore == null) {
+            try {
+                System.out.println("Creating new MySQL DataStore instance...");
+                dataStore = new MySQLDataStore();
+                logger.info("MySQL DataStore initialized successfully");
+            } catch (Exception e) {
+                String errorMsg = "Failed to initialize MySQL DataStore: " + e.getMessage();
+                logger.severe(errorMsg);
+                e.printStackTrace();
+                // Show error dialog and exit
+                Platform.runLater(() -> {
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Database Connection Error");
+                    alert.setHeaderText("Failed to connect to MySQL database");
+                    alert.setContentText("Please ensure MySQL is running and the database configuration is correct.\n\nError: " + e.getMessage());
+                    alert.showAndWait();
+                    Platform.exit();
+                });
+                return;
+            }
+        } else {
+            System.out.println("Using existing MySQL DataStore instance");
         }
 
         // Start server in background thread
         CompletableFuture.runAsync(() -> {
             try {
-                server = new GaweServer();
-                server.start();
+                if (server == null) {
+                    System.out.println("Starting server...");
+                    server = new GaweServer();
+                    server.start();
+                    System.out.println("Server started successfully");
+                }
             } catch (Exception e) {
-                System.err.println("Failed to start server: " + e.getMessage());
+                String errorMsg = "Failed to start server: " + e.getMessage();
+                System.err.println(errorMsg);
+                e.printStackTrace();
             }
         });
+        
+        System.out.println("Application initialization completed");
     }
 
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(HelloApplication.class.getName());
 
     @Override
     public void start(Stage stage) {
+        // Initialize MySQL DataStore if not already initialized
+        if (dataStore == null) {
+            try {
+                System.out.println("Initializing MySQL DataStore...");
+                dataStore = new MySQLDataStore();
+                System.out.println("MySQL DataStore initialized successfully");
+            } catch (Exception e) {
+                System.err.println("Failed to initialize MySQL DataStore: " + e.getMessage());
+                showAlert(Alert.AlertType.ERROR, "Database Error", 
+                    "Failed to connect to database. Please ensure MySQL is running.\n\nError: " + e.getMessage());
+                Platform.exit();
+                return;
+            }
+        }
+
         BorderPane root = new BorderPane();
         root.setStyle("-fx-background-color: linear-gradient(to bottom, #667eea 0%, #764ba2 100%);");
 
