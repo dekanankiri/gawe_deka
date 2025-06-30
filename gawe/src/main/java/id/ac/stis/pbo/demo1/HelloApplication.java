@@ -3,7 +3,7 @@ package id.ac.stis.pbo.demo1;
 import id.ac.stis.pbo.demo1.data.MySQLDataStore;
 import id.ac.stis.pbo.demo1.models.Employee;
 import id.ac.stis.pbo.demo1.server.GaweServer;
-import id.ac.stis.pbo.demo1.ui.SupervisorDashboard;
+import id.ac.stis.pbo.demo1.ui.SupervisorDashboardNew;
 import id.ac.stis.pbo.demo1.ui.ManagerDashboard;
 import id.ac.stis.pbo.demo1.ui.EmployeeDashboard;
 import javafx.application.Application;
@@ -280,7 +280,7 @@ public class HelloApplication extends Application {
 
                 case "supervisor":
                     // Open Supervisor Dashboard
-                    SupervisorDashboard supervisorDashboard = new SupervisorDashboard(employee);
+                    SupervisorDashboardNew supervisorDashboard = new SupervisorDashboardNew(employee);
                     supervisorDashboard.start(dashboardStage);
                     break;
 

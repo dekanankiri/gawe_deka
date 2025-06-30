@@ -4,6 +4,7 @@ import id.ac.stis.pbo.demo1.data.DataStoreFactory;
 import id.ac.stis.pbo.demo1.data.MySQLDataStore;
 import id.ac.stis.pbo.demo1.data.MySQLDataStore.MonthlyEvaluation;
 import id.ac.stis.pbo.demo1.models.Employee;
+import id.ac.stis.pbo.demo1.models.LeaveRequest;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -12,6 +13,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.TableCell;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -1542,6 +1544,60 @@ public class SupervisorDashboard extends Application {
         table.setItems(FXCollections.observableArrayList(teamLeaveRequests));
 
         return table;
+    }
+
+    private void showLeaveApprovalDialog(LeaveRequest request, boolean isApproval) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(isApproval ? "Approve Leave Request" : "Reject Leave Request");
+        dialog.setHeaderText("Leave request from " + request.getEmployeeId());
+
+        VBox content = new VBox(15);
+        content.setPadding(new Insets(20));
+
+        Employee requestingEmployee = dataStore.getEmployeeById(request.getEmployeeId());
+        String employeeName = requestingEmployee != null ? requestingEmployee.getNama() : "Unknown";
+
+        Label infoLabel = new Label(String.format(
+                "Employee: %s\nType: %s\nDates: %s to %s\nDays: %d\nReason: %s",
+                employeeName,
+                request.getLeaveType(),
+                sdf.format(request.getStartDate()),
+                sdf.format(request.getEndDate()),
+                request.getTotalDays(),
+                request.getReason()
+        ));
+
+        TextArea notesArea = new TextArea();
+        notesArea.setPromptText("Enter approval/rejection notes...");
+        notesArea.setPrefRowCount(3);
+
+        content.getChildren().addAll(
+                new Label("Request Details:"), infoLabel,
+                new Label("Notes:"), notesArea
+        );
+
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.OK) {
+                boolean success;
+                if (isApproval) {
+                    success = dataStore.approveLeaveRequest(request.getId(), supervisor.getId(), notesArea.getText());
+                } else {
+                    success = dataStore.rejectLeaveRequest(request.getId(), supervisor.getId(), notesArea.getText());
+                }
+
+                if (success) {
+                    showAlert(Alert.AlertType.INFORMATION, "Success",
+                            "Leave request " + (isApproval ? "approved" : "rejected") + " successfully!");
+                    showLeaveApprovalsContent(); // Refresh the view
+                } else {
+                    showAlert(Alert.AlertType.ERROR, "Error",
+                            "Failed to " + (isApproval ? "approve" : "reject") + " leave request.");
+                }
+            }
+        });
     }
 
     private void showAlert(Alert.AlertType type, String title, String message) {
