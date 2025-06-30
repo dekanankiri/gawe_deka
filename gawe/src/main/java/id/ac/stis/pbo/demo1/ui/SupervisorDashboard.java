@@ -1500,12 +1500,8 @@ public class SupervisorDashboard extends Application {
                 .collect(Collectors.toList());
         List<String> teamMemberIds = teamMembers.stream().map(Employee::getId).collect(Collectors.toList());
 
-        // Retrieve all leave requests and filter only those that are pending and submitted by team members
-        List<LeaveRequest> pendingRequests = dataStore.getAllLeaveRequests()
-                .stream()
-                .filter(req -> req.getStatus().equalsIgnoreCase("pending")
-                        && teamMemberIds.contains(req.getEmployeeId()))
-                .collect(Collectors.toList());
+        // Retrieve leave requests pending approval for this supervisor using dataStore method
+        List<LeaveRequest> pendingRequests = dataStore.getLeaveRequestsForApproval(supervisor.getId());
 
         // Create a TableView to display the pending leave requests
         TableView<LeaveRequest> table = new TableView<>();
