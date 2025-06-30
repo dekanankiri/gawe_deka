@@ -117,6 +117,7 @@ public class SupervisorDashboard extends Application {
                 createNavButton("📊 Dashboard", this::showDashboardContent),
                 createNavButton("⏰ My Attendance", this::showMyAttendance),
                 createNavButton("📅 My Meetings", this::showMyMeetings),
+                createNavButton("✅ Leave Approvals", this::showLeaveApprovalsContent),
                 createNavButton("🏖️ My Leave Requests", this::showMyLeaveRequests),
                 createNavButton("👥 Team Management", this::showTeamManagementContent),
                 createNavButton("⭐ Monthly Evaluation", this::showMonthlyEvaluationContent),
@@ -1477,6 +1478,147 @@ public class SupervisorDashboard extends Application {
         table.setItems(FXCollections.observableArrayList(teamSalaryHistory));
 
         return table;
+    }
+
+    private void showLeaveApprovalsContent() {
+        contentArea.getChildren().clear();
+
+        VBox content = new VBox(20);
+        content.setAlignment(Pos.TOP_CENTER);
+        content.setPadding(new Insets(20));
+
+        Label title = new Label("Pending Leave Approvals");
+        title.setFont(Font.font("Segoe UI", FontWeight.BOLD, 24));
+        title.setTextFill(Color.WHITE);
+
+        // Retrieve team members in the supervisor's division with "pegawai" role
+        List<Employee> teamMembers = dataStore.getEmployeesByDivision(supervisor.getDivisi())
+                .stream().filter(emp -> emp.getRole().equalsIgnoreCase("pegawai"))
+                .collect(Collectors.toList());
+        List<String> teamMemberIds = teamMembers.stream().map(Employee::getId).collect(Collectors.toList());
+
+        // Retrieve all leave requests and filter only those that are pending and submitted by team members
+        List<LeaveRequest> pendingRequests = dataStore.getAllLeaveRequests()
+                .stream()
+                .filter(req -> req.getStatus().equalsIgnoreCase("pending")
+                        && teamMemberIds.contains(req.getEmployeeId()))
+                .collect(Collectors.toList());
+
+        // Create a TableView to display the pending leave requests
+        TableView<LeaveRequest> table = new TableView<>();
+        table.setPrefHeight(400);
+        table.setStyle("""
+            -fx-background-color: white;
+            -fx-background-radius: 15;
+            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 5);
+        """);
+
+        // Define table columns
+        TableColumn<LeaveRequest, String> employeeCol = new TableColumn<>("Employee");
+        employeeCol.setCellValueFactory(new PropertyValueFactory<>("employeeId"));
+        employeeCol.setPrefWidth(150);
+
+        TableColumn<LeaveRequest, String> typeCol = new TableColumn<>("Leave Type");
+        typeCol.setCellValueFactory(new PropertyValueFactory<>("leaveType"));
+        typeCol.setPrefWidth(120);
+
+        TableColumn<LeaveRequest, String> startDateCol = new TableColumn<>("Start Date");
+        startDateCol.setCellValueFactory(cellData ->
+            new javafx.beans.property.SimpleStringProperty(sdf.format(cellData.getValue().getStartDate())));
+        startDateCol.setPrefWidth(100);
+
+        TableColumn<LeaveRequest, String> endDateCol = new TableColumn<>("End Date");
+        endDateCol.setCellValueFactory(cellData ->
+            new javafx.beans.property.SimpleStringProperty(sdf.format(cellData.getValue().getEndDate())));
+        endDateCol.setPrefWidth(100);
+
+        TableColumn<LeaveRequest, Integer> daysCol = new TableColumn<>("Days");
+        daysCol.setCellValueFactory(new PropertyValueFactory<>("totalDays"));
+        daysCol.setPrefWidth(60);
+
+        TableColumn<LeaveRequest, String> reasonCol = new TableColumn<>("Reason");
+        reasonCol.setCellValueFactory(new PropertyValueFactory<>("reason"));
+        reasonCol.setPrefWidth(200);
+
+        // Action column with Approve and Reject buttons
+        TableColumn<LeaveRequest, Void> actionCol = new TableColumn<>("Actions");
+        actionCol.setPrefWidth(200);
+        actionCol.setCellFactory(col -> new TableCell<>() {
+            private final Button approveBtn = new Button("Approve");
+            private final Button rejectBtn = new Button("Reject");
+
+            {
+                // Style the buttons
+                approveBtn.setStyle("""
+                    -fx-background-color: #27ae60;
+                    -fx-text-fill: white;
+                    -fx-padding: 8 15;
+                    -fx-background-radius: 5;
+                    -fx-cursor: hand;
+                    """);
+                rejectBtn.setStyle("""
+                    -fx-background-color: #e74c3c;
+                    -fx-text-fill: white;
+                    -fx-padding: 8 15;
+                    -fx-background-radius: 5;
+                    -fx-cursor: hand;
+                    """);
+
+                // Handle Approve action
+                approveBtn.setOnAction(e -> {
+                    LeaveRequest request = getTableView().getItems().get(getIndex());
+                    LeaveRequestApprovalDialog dialog = new LeaveRequestApprovalDialog(request, supervisor, (MySQLDataStore) dataStore, true);
+                    dialog.showAndWait().ifPresent(result -> {
+                        if (result == ButtonType.OK) {
+                            boolean processed = dialog.processResult();
+                            if (processed) {
+                                showAlert(Alert.AlertType.INFORMATION, "Success", "Leave request approved successfully!");
+                                showLeaveApprovalsContent(); // Refresh view
+                            } else {
+                                showAlert(Alert.AlertType.ERROR, "Error", "Failed to approve leave request.");
+                            }
+                        }
+                    });
+                });
+
+                // Handle Reject action
+                rejectBtn.setOnAction(e -> {
+                    LeaveRequest request = getTableView().getItems().get(getIndex());
+                    LeaveRequestApprovalDialog dialog = new LeaveRequestApprovalDialog(request, supervisor, (MySQLDataStore) dataStore, false);
+                    dialog.showAndWait().ifPresent(result -> {
+                        if (result == ButtonType.OK) {
+                            boolean processed = dialog.processResult();
+                            if (processed) {
+                                showAlert(Alert.AlertType.INFORMATION, "Success", "Leave request rejected successfully!");
+                                showLeaveApprovalsContent(); // Refresh view
+                            } else {
+                                showAlert(Alert.AlertType.ERROR, "Error", "Failed to reject leave request.");
+                            }
+                        }
+                    });
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    HBox pane = new HBox(10, approveBtn, rejectBtn);
+                    pane.setAlignment(Pos.CENTER);
+                    setGraphic(pane);
+                }
+            }
+        });
+
+        // Add all columns to the table view
+        table.getColumns().addAll(employeeCol, typeCol, startDateCol, endDateCol, daysCol, reasonCol, actionCol);
+        table.setItems(FXCollections.observableArrayList(pendingRequests));
+
+        // Add title and table to the container then add it to the main content area
+        content.getChildren().addAll(title, table);
+        contentArea.getChildren().add(content);
     }
 
     private void showAllHistoryContent() {
