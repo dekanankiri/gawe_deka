@@ -1,6 +1,6 @@
 package id.ac.stis.pbo.demo1.ui;
 
-import id.ac.stis.pbo.demo1.data.DataStoreFactory;
+import id.ac.stis.pbo.demo1.HelloApplication;
 import id.ac.stis.pbo.demo1.data.MySQLDataStore;
 import id.ac.stis.pbo.demo1.data.MySQLDataStore.MonthlyEvaluation;
 import id.ac.stis.pbo.demo1.models.Employee;
@@ -42,7 +42,7 @@ public class SupervisorDashboard extends Application {
 
     public SupervisorDashboard(Employee supervisor) {
         this.supervisor = supervisor;
-        this.dataStore = DataStoreFactory.getMySQLDataStore();
+        this.dataStore = HelloApplication.getDataStore(); // Use existing instance
     }
 
     @Override
@@ -1240,7 +1240,7 @@ public class SupervisorDashboard extends Application {
         metricsGrid.setAlignment(Pos.CENTER);
 
         // Calculate metrics from team data
-        List<Employee> teamMembers = DataStore.getAllEmployees().stream()
+        List<Employee> teamMembers = dataStore.getAllEmployees().stream()
                 .filter(emp -> emp.getDivisi().equals(supervisor.getDivisi()) &&
                         emp.getRole().equals("pegawai"))
                 .toList();
@@ -1436,7 +1436,7 @@ public class SupervisorDashboard extends Application {
 
         table.getColumns().addAll(monthCol, yearCol, baseCol, totalCol);
 
-        List<id.ac.stis.pbo.demo1.models.SalaryHistory> mySalaryHistory = DataStore.getSalaryHistoryByEmployee(supervisor.getId());
+        List<id.ac.stis.pbo.demo1.models.SalaryHistory> mySalaryHistory = dataStore.getSalaryHistoryByEmployee(supervisor.getId());
         table.setItems(FXCollections.observableArrayList(mySalaryHistory));
 
         return table;
@@ -1751,11 +1751,9 @@ public class SupervisorDashboard extends Application {
     }
 
     public static void main(String[] args) {
-        // Sample supervisor for testing
-        Employee supervisor = new Employee("SUP001", "Alice Supervisor", "password123",
-                "supervisor", "HR", "HR Supervisor", new java.util.Date());
-
-        SupervisorDashboard dashboard = new SupervisorDashboard(supervisor);
-        Application.launch(SupervisorDashboard.class, args);
+        // This method should not be used directly
+        // The dashboard should be launched through HelloApplication
+        throw new UnsupportedOperationException(
+            "SupervisorDashboard should be launched through HelloApplication");
     }
 }

@@ -3,7 +3,7 @@ package id.ac.stis.pbo.demo1;
 import id.ac.stis.pbo.demo1.data.MySQLDataStore;
 import id.ac.stis.pbo.demo1.models.Employee;
 import id.ac.stis.pbo.demo1.server.GaweServer;
-import id.ac.stis.pbo.demo1.ui.SupervisorDashboardNew;
+import id.ac.stis.pbo.demo1.ui.SupervisorDashboard;
 import id.ac.stis.pbo.demo1.ui.ManagerDashboard;
 import id.ac.stis.pbo.demo1.ui.EmployeeDashboard;
 import javafx.application.Application;
@@ -25,6 +25,10 @@ import java.util.concurrent.CompletableFuture;
 public class HelloApplication extends Application {
     private GaweServer server;
     private static MySQLDataStore dataStore; // Make dataStore static to persist across instances
+    
+    public static MySQLDataStore getDataStore() {
+        return dataStore;
+    }
 
     @Override
     public void init() {
@@ -279,8 +283,8 @@ public class HelloApplication extends Application {
                     break;
 
                 case "supervisor":
-                    // Open Supervisor Dashboard
-                    SupervisorDashboardNew supervisorDashboard = new SupervisorDashboardNew(employee);
+                    // Open Full-Featured Supervisor Dashboard
+                    SupervisorDashboard supervisorDashboard = new SupervisorDashboard(employee);
                     supervisorDashboard.start(dashboardStage);
                     break;
 

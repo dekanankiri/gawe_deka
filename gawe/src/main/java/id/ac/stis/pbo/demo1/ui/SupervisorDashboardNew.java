@@ -1,10 +1,17 @@
+/**
+ * @deprecated This class has been replaced by SupervisorDashboard.
+ * This file is kept only for reference and will be removed.
+ * Please use SupervisorDashboard for all supervisor functionality.
+ */
+
 package id.ac.stis.pbo.demo1.ui;
 
-import id.ac.stis.pbo.demo1.data.DataStoreFactory;
-import id.ac.stis.pbo.demo1.data.MySQLDataStore;
-import id.ac.stis.pbo.demo1.models.Employee;
-import id.ac.stis.pbo.demo1.models.LeaveRequest;
-import javafx.application.Application;
+@Deprecated
+public final class SupervisorDashboardNew {
+    private SupervisorDashboardNew() {
+        throw new UnsupportedOperationException("This class is deprecated. Use SupervisorDashboard instead.");
+    }
+}
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -20,6 +27,12 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * @deprecated This class is deprecated and will be removed in future versions.
+ * Please use {@link SupervisorDashboard} instead which provides full supervisor functionality.
+ * This limited version only supported leave approvals and has been replaced by the full-featured dashboard.
+ */
+@Deprecated
 public class SupervisorDashboardNew extends Application {
     private final Employee supervisor;
     private final MySQLDataStore dataStore;
