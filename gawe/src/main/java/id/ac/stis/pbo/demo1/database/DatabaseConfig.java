@@ -9,7 +9,17 @@ public class DatabaseConfig {
     public static final String DB_PORT = "3306";
     public static final String DB_NAME = "gawe_db";
     public static final String DB_USER = "root";
-    public static final String DB_PASSWORD = "";
+    public static final String DB_PASSWORD = "";  // Default empty password for root
+
+    static {
+        // Print database configuration on startup
+        System.out.println("Database Configuration:");
+        System.out.println("Host: " + DB_HOST);
+        System.out.println("Port: " + DB_PORT);
+        System.out.println("Database: " + DB_NAME);
+        System.out.println("Username: " + DB_USER);
+        System.out.println("JDBC URL: " + getJdbcUrl());
+    }
     
     // Connection pool settings
     public static final int MAX_POOL_SIZE = 20;

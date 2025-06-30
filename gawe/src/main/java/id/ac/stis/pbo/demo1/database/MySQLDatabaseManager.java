@@ -63,9 +63,33 @@ public class MySQLDatabaseManager {
     }
 
     public void initializeDatabase() {
-        createDatabase();
-        createTables();
-        insertSampleData();
+        System.out.println("Starting database initialization...");
+        try {
+            createDatabase();
+            System.out.println("Database created successfully");
+            
+            createTables();
+            System.out.println("Tables created successfully");
+            
+            // Check if data already exists
+            try (Connection conn = dataSource.getConnection();
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM employees")) {
+                
+                if (rs.next() && rs.getInt(1) > 0) {
+                    System.out.println("Data already exists in database, skipping sample data insertion");
+                } else {
+                    System.out.println("No existing data found, inserting sample data...");
+                    insertSampleData();
+                    System.out.println("Sample data inserted successfully");
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error during database initialization: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Database initialization failed", e);
+        }
+        System.out.println("Database initialization completed successfully");
     }
 
     private void createDatabase() {
@@ -544,6 +568,8 @@ public class MySQLDatabaseManager {
     }
 
     private void insertSampleMeetings() {
+        System.out.println("Starting to insert sample meetings...");
+        
         String insertMeetingQuery = """
             INSERT INTO meetings (title, description, tanggal, waktu_mulai, waktu_selesai, lokasi, organizer_id, status) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -554,6 +580,16 @@ public class MySQLDatabaseManager {
         """;
 
         try (Connection conn = dataSource.getConnection()) {
+            // First check if meetings already exist
+            try (Statement checkStmt = conn.createStatement();
+                 ResultSet rs = checkStmt.executeQuery("SELECT COUNT(*) FROM meetings")) {
+                if (rs.next() && rs.getInt(1) > 0) {
+                    System.out.println("Meetings already exist in database, skipping insertion");
+                    return;
+                }
+            }
+
+            System.out.println("No existing meetings found, proceeding with insertion");
             conn.setAutoCommit(false);
             
             try (PreparedStatement meetingStmt = conn.prepareStatement(insertMeetingQuery, Statement.RETURN_GENERATED_KEYS);

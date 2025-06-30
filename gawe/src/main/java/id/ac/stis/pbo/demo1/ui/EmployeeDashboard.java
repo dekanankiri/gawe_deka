@@ -35,9 +35,9 @@ public class EmployeeDashboard extends Application {
     private SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
     private final MySQLDataStore dataStore;
 
-    public EmployeeDashboard(Employee employee) {
+    public EmployeeDashboard(Employee employee, MySQLDataStore dataStore) {
         this.employee = employee;
-        this.dataStore = DataStoreFactory.getMySQLDataStore();
+        this.dataStore = dataStore;
     }
 
 
@@ -329,25 +329,40 @@ public class EmployeeDashboard extends Application {
         ListView<String> meetingsList = new ListView<>();
         meetingsList.setPrefHeight(150);
 
+        // Debug logging
+        System.out.println("Employee ID: " + employee.getId());
+        System.out.println("DataStore instance: " + dataStore);
+
         // INTEGRATED: Get meetings where this employee is a participant
         List<Meeting> todaysMeetings = dataStore.getMeetingsByEmployee(employee.getId());
+        System.out.println("Retrieved meetings count: " + todaysMeetings.size());
+        
         Calendar today = Calendar.getInstance();
+        System.out.println("Today's date: " + today.getTime());
 
         ObservableList<String> meetingItems = FXCollections.observableArrayList();
+        System.out.println("\nFiltering meetings for today's date...");
+        System.out.println("Today's date: " + today.getTime());
+        
         for (Meeting meeting : todaysMeetings) {
             Calendar meetingCal = Calendar.getInstance();
             meetingCal.setTime(meeting.getTanggal());
+            
+            System.out.println("\nChecking meeting: " + meeting.getTitle());
+            System.out.println("Meeting date: " + meeting.getTanggal());
+            System.out.println("Meeting year: " + meetingCal.get(Calendar.YEAR) + " vs Today's year: " + today.get(Calendar.YEAR));
+            System.out.println("Meeting day: " + meetingCal.get(Calendar.DAY_OF_YEAR) + " vs Today's day: " + today.get(Calendar.DAY_OF_YEAR));
 
-            if (meetingCal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
-                    meetingCal.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR)) {
-                
-                // Get organizer name
-                Employee organizer = dataStore.getEmployeeById(meeting.getOrganizerId());
-                String organizerName = organizer != null ? organizer.getNama() : "Unknown";
-                
-                meetingItems.add("📅 " + meeting.getTitle() + " at " + meeting.getWaktuMulai() +
-                        " (" + meeting.getLokasi() + ") - Organized by " + organizerName);
-            }
+            // Include all meetings for testing
+            Employee organizer = dataStore.getEmployeeById(meeting.getOrganizerId());
+            String organizerName = organizer != null ? organizer.getNama() : "Unknown";
+            
+            String meetingInfo = "📅 " + meeting.getTitle() + " at " + meeting.getWaktuMulai() +
+                    " (" + meeting.getLokasi() + ") - Organized by " + organizerName +
+                    " [Date: " + meeting.getTanggal() + "]";
+            
+            meetingItems.add(meetingInfo);
+            System.out.println("Added meeting to list: " + meetingInfo);
         }
 
         if (meetingItems.isEmpty()) {

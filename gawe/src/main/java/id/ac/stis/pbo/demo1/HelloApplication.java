@@ -254,7 +254,7 @@ public class HelloApplication extends Application {
 
                 case "pegawai":
                     // Open Employee Dashboard
-                    EmployeeDashboard employeeDashboard = new EmployeeDashboard(employee);
+                    EmployeeDashboard employeeDashboard = new EmployeeDashboard(employee, dataStore);
                     employeeDashboard.start(dashboardStage);
                     break;
 

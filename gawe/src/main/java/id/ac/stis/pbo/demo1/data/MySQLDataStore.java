@@ -31,11 +31,37 @@ public class MySQLDataStore {
      */
     public MySQLDataStore() {
         try {
+            System.out.println("Initializing MySQLDataStore...");
             dbManager = new MySQLDatabaseManager();
             dbManager.initializeDatabase();
+            
+            // Verify database connection and data
+            try (Connection conn = dbManager.getConnection();
+                 Statement stmt = conn.createStatement()) {
+                
+                // Check employees
+                ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM employees");
+                if (rs.next()) {
+                    System.out.println("Number of employees in database: " + rs.getInt(1));
+                }
+                
+                // Check meetings
+                rs = stmt.executeQuery("SELECT COUNT(*) FROM meetings");
+                if (rs.next()) {
+                    System.out.println("Number of meetings in database: " + rs.getInt(1));
+                }
+                
+                // Check meeting participants
+                rs = stmt.executeQuery("SELECT COUNT(*) FROM meeting_participants");
+                if (rs.next()) {
+                    System.out.println("Number of meeting participants in database: " + rs.getInt(1));
+                }
+            }
+            
             logger.info("MySQL DataStore initialized successfully");
         } catch (Exception e) {
             logger.severe("Failed to initialize MySQL DataStore: " + e.getMessage());
+            e.printStackTrace();
             throw new RuntimeException("MySQL DataStore initialization failed", e);
         }
     }
@@ -631,18 +657,30 @@ public class MySQLDataStore {
             ORDER BY m.tanggal ASC, m.waktu_mulai ASC
         """;
         
+        System.out.println("Executing getMeetingsByEmployee for employeeId: " + employeeId);
+        
         try (Connection conn = dbManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setString(1, employeeId);
             pstmt.setString(2, employeeId);
+            
+            System.out.println("Executing SQL query: " + query);
+            System.out.println("With parameters: organizer_id=" + employeeId + ", participant_id=" + employeeId);
+            
             ResultSet rs = pstmt.executeQuery();
             
             while (rs.next()) {
-                meetings.add(mapResultSetToMeeting(rs));
+                Meeting meeting = mapResultSetToMeeting(rs);
+                meetings.add(meeting);
+                System.out.println("Found meeting: " + meeting.getTitle() + " on " + meeting.getTanggal());
             }
+            
+            System.out.println("Total meetings found: " + meetings.size());
+            
         } catch (SQLException e) {
             logger.severe("Error getting meetings by employee: " + e.getMessage());
+            e.printStackTrace(); // Add stack trace for more detailed error info
         }
         
         return meetings;
