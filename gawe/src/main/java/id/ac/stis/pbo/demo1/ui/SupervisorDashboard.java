@@ -2,6 +2,7 @@ package id.ac.stis.pbo.demo1.ui;
 
 import id.ac.stis.pbo.demo1.data.DataStoreFactory;
 import id.ac.stis.pbo.demo1.data.MySQLDataStore;
+import id.ac.stis.pbo.demo1.data.MySQLDataStore.MonthlyEvaluation;
 import id.ac.stis.pbo.demo1.models.Employee;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
@@ -1003,35 +1004,35 @@ public class SupervisorDashboard extends Application {
         return form;
     }
 
-    private TableView<DataStore.MonthlyEvaluation> createMonthlyEvaluationHistoryTable() {
-        TableView<DataStore.MonthlyEvaluation> table = new TableView<>();
+    private TableView<MySQLDataStore.MonthlyEvaluation> createMonthlyEvaluationHistoryTable() {
+        TableView<MySQLDataStore.MonthlyEvaluation> table = new TableView<>();
         table.setPrefHeight(400);
 
-        TableColumn<DataStore.MonthlyEvaluation, String> employeeCol = new TableColumn<>("Employee");
+        TableColumn<MySQLDataStore.MonthlyEvaluation, String> employeeCol = new TableColumn<>("Employee");
         employeeCol.setCellValueFactory(new PropertyValueFactory<>("employeeId"));
 
-        TableColumn<DataStore.MonthlyEvaluation, String> monthCol = new TableColumn<>("Month");
+        TableColumn<MySQLDataStore.MonthlyEvaluation, String> monthCol = new TableColumn<>("Month");
         monthCol.setCellValueFactory(cellData -> {
             String[] months = {"", "January", "February", "March", "April", "May", "June",
                     "July", "August", "September", "October", "November", "December"};
             return new javafx.beans.property.SimpleStringProperty(months[cellData.getValue().getMonth()]);
         });
 
-        TableColumn<DataStore.MonthlyEvaluation, Integer> yearCol = new TableColumn<>("Year");
+        TableColumn<MySQLDataStore.MonthlyEvaluation, Integer> yearCol = new TableColumn<>("Year");
         yearCol.setCellValueFactory(new PropertyValueFactory<>("year"));
 
-        TableColumn<DataStore.MonthlyEvaluation, String> overallCol = new TableColumn<>("Overall Rating");
+        TableColumn<MySQLDataStore.MonthlyEvaluation, String> overallCol = new TableColumn<>("Overall Rating");
         overallCol.setCellValueFactory(cellData ->
                 new javafx.beans.property.SimpleStringProperty(df.format(cellData.getValue().getOverallRating()) + "%"));
 
-        TableColumn<DataStore.MonthlyEvaluation, String> dateCol = new TableColumn<>("Date");
+        TableColumn<MySQLDataStore.MonthlyEvaluation, String> dateCol = new TableColumn<>("Date");
         dateCol.setCellValueFactory(cellData ->
                 new javafx.beans.property.SimpleStringProperty(sdf.format(cellData.getValue().getEvaluationDate())));
 
         table.getColumns().addAll(employeeCol, monthCol, yearCol, overallCol, dateCol);
 
         // Get monthly evaluations by this supervisor
-        List<DataStore.MonthlyEvaluation> monthlyEvaluations = dataStore.getMonthlyEvaluationsBySupervisor(supervisor.getId());
+        List<MySQLDataStore.MonthlyEvaluation> monthlyEvaluations = dataStore.getMonthlyEvaluationsBySupervisor(supervisor.getId());
         table.setItems(FXCollections.observableArrayList(monthlyEvaluations));
 
         return table;
