@@ -28,6 +28,7 @@ import java.util.Calendar;
 
 /**
  * Enhanced Employee Dashboard with MySQL integration and role interactions
+ * Fixed leave request functionality
  */
 public class EmployeeDashboard extends Application {
     private final Employee employee;
@@ -40,7 +41,6 @@ public class EmployeeDashboard extends Application {
         this.employee = employee;
         this.dataStore = dataStore;
     }
-
 
     @Override
     public void start(Stage stage) {
@@ -312,14 +312,24 @@ public class EmployeeDashboard extends Application {
     }
 
     private boolean hasAttendanceToday() {
-        List<Attendance> todayAttendance = dataStore.getTodayAttendance(employee.getId());
-        return !todayAttendance.isEmpty();
+        try {
+            List<Attendance> todayAttendance = dataStore.getTodayAttendance(employee.getId());
+            return !todayAttendance.isEmpty();
+        } catch (Exception e) {
+            System.err.println("Error checking today's attendance: " + e.getMessage());
+            return false;
+        }
     }
 
     private boolean hasCompletedAttendanceToday() {
-        List<Attendance> todayAttendance = dataStore.getTodayAttendance(employee.getId());
-        return !todayAttendance.isEmpty() &&
-                todayAttendance.get(0).getJamKeluar() != null;
+        try {
+            List<Attendance> todayAttendance = dataStore.getTodayAttendance(employee.getId());
+            return !todayAttendance.isEmpty() &&
+                    todayAttendance.get(0).getJamKeluar() != null;
+        } catch (Exception e) {
+            System.err.println("Error checking completed attendance: " + e.getMessage());
+            return false;
+        }
     }
 
     private VBox createTodaysMeetingsPreview() {
@@ -338,47 +348,42 @@ public class EmployeeDashboard extends Application {
         ListView<String> meetingsList = new ListView<>();
         meetingsList.setPrefHeight(150);
 
-        // Debug logging
-        System.out.println("Employee ID: " + employee.getId());
-        System.out.println("DataStore instance: " + dataStore);
+        try {
+            // INTEGRATED: Get meetings where this employee is a participant
+            List<Meeting> todaysMeetings = dataStore.getMeetingsByEmployee(employee.getId());
+            Calendar today = Calendar.getInstance();
 
-        // INTEGRATED: Get meetings where this employee is a participant
-        List<Meeting> todaysMeetings = dataStore.getMeetingsByEmployee(employee.getId());
-        System.out.println("Retrieved meetings count: " + todaysMeetings.size());
-        
-        Calendar today = Calendar.getInstance();
-        System.out.println("Today's date: " + today.getTime());
+            ObservableList<String> meetingItems = FXCollections.observableArrayList();
+            
+            for (Meeting meeting : todaysMeetings) {
+                Calendar meetingCal = Calendar.getInstance();
+                meetingCal.setTime(meeting.getTanggal());
+                
+                // Check if meeting is today
+                if (meetingCal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+                    meetingCal.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR)) {
+                    
+                    Employee organizer = dataStore.getEmployeeById(meeting.getOrganizerId());
+                    String organizerName = organizer != null ? organizer.getNama() : "Unknown";
+                    
+                    String meetingInfo = "📅 " + meeting.getTitle() + " at " + meeting.getWaktuMulai() +
+                            " (" + meeting.getLokasi() + ") - Organized by " + organizerName;
+                    
+                    meetingItems.add(meetingInfo);
+                }
+            }
 
-        ObservableList<String> meetingItems = FXCollections.observableArrayList();
-        System.out.println("\nFiltering meetings for today's date...");
-        System.out.println("Today's date: " + today.getTime());
-        
-        for (Meeting meeting : todaysMeetings) {
-            Calendar meetingCal = Calendar.getInstance();
-            meetingCal.setTime(meeting.getTanggal());
-            
-            System.out.println("\nChecking meeting: " + meeting.getTitle());
-            System.out.println("Meeting date: " + meeting.getTanggal());
-            System.out.println("Meeting year: " + meetingCal.get(Calendar.YEAR) + " vs Today's year: " + today.get(Calendar.YEAR));
-            System.out.println("Meeting day: " + meetingCal.get(Calendar.DAY_OF_YEAR) + " vs Today's day: " + today.get(Calendar.DAY_OF_YEAR));
+            if (meetingItems.isEmpty()) {
+                meetingItems.add("No meetings scheduled for today");
+            }
 
-            // Include all meetings for testing
-            Employee organizer = dataStore.getEmployeeById(meeting.getOrganizerId());
-            String organizerName = organizer != null ? organizer.getNama() : "Unknown";
-            
-            String meetingInfo = "📅 " + meeting.getTitle() + " at " + meeting.getWaktuMulai() +
-                    " (" + meeting.getLokasi() + ") - Organized by " + organizerName +
-                    " [Date: " + meeting.getTanggal() + "]";
-            
-            meetingItems.add(meetingInfo);
-            System.out.println("Added meeting to list: " + meetingInfo);
+            meetingsList.setItems(meetingItems);
+        } catch (Exception e) {
+            System.err.println("Error loading today's meetings: " + e.getMessage());
+            ObservableList<String> errorItems = FXCollections.observableArrayList();
+            errorItems.add("Error loading meetings");
+            meetingsList.setItems(errorItems);
         }
-
-        if (meetingItems.isEmpty()) {
-            meetingItems.add("No meetings scheduled for today");
-        }
-
-        meetingsList.setItems(meetingItems);
 
         meetingsBox.getChildren().addAll(titleLabel, meetingsList);
         return meetingsBox;
@@ -397,62 +402,79 @@ public class EmployeeDashboard extends Application {
         titleLabel.setFont(Font.font("Segoe UI", FontWeight.BOLD, 18));
         titleLabel.setTextFill(Color.web("#2c3e50"));
 
-        // Get pending leave requests for this employee
-        List<LeaveRequest> myLeaveRequests = dataStore.getLeaveRequestsByEmployee(employee.getId());
-        long pendingCount = myLeaveRequests.stream().filter(lr -> "pending".equals(lr.getStatus())).count();
-        long approvedCount = myLeaveRequests.stream().filter(lr -> "approved".equals(lr.getStatus())).count();
-        long rejectedCount = myLeaveRequests.stream().filter(lr -> "rejected".equals(lr.getStatus())).count();
+        try {
+            // Get pending leave requests for this employee
+            List<LeaveRequest> myLeaveRequests = dataStore.getLeaveRequestsByEmployee(employee.getId());
+            long pendingCount = myLeaveRequests.stream().filter(lr -> "pending".equals(lr.getStatus())).count();
+            long approvedCount = myLeaveRequests.stream().filter(lr -> "approved".equals(lr.getStatus())).count();
+            long rejectedCount = myLeaveRequests.stream().filter(lr -> "rejected".equals(lr.getStatus())).count();
 
-        GridPane statusGrid = new GridPane();
-        statusGrid.setHgap(20);
-        statusGrid.setVgap(10);
+            GridPane statusGrid = new GridPane();
+            statusGrid.setHgap(20);
+            statusGrid.setVgap(10);
 
-        statusGrid.add(new Label("Pending:"), 0, 0);
-        statusGrid.add(new Label(String.valueOf(pendingCount)), 1, 0);
-        statusGrid.add(new Label("Approved:"), 0, 1);
-        statusGrid.add(new Label(String.valueOf(approvedCount)), 1, 1);
-        statusGrid.add(new Label("Rejected:"), 0, 2);
-        statusGrid.add(new Label(String.valueOf(rejectedCount)), 1, 2);
+            statusGrid.add(new Label("Pending:"), 0, 0);
+            statusGrid.add(new Label(String.valueOf(pendingCount)), 1, 0);
+            statusGrid.add(new Label("Approved:"), 0, 1);
+            statusGrid.add(new Label(String.valueOf(approvedCount)), 1, 1);
+            statusGrid.add(new Label("Rejected:"), 0, 2);
+            statusGrid.add(new Label(String.valueOf(rejectedCount)), 1, 2);
 
-        statusBox.getChildren().addAll(titleLabel, statusGrid);
+            statusBox.getChildren().addAll(titleLabel, statusGrid);
+        } catch (Exception e) {
+            System.err.println("Error loading leave request status: " + e.getMessage());
+            Label errorLabel = new Label("Error loading leave request status");
+            statusBox.getChildren().addAll(titleLabel, errorLabel);
+        }
+
         return statusBox;
     }
 
     private void clockIn() {
-        // Check if already clocked in today
-        if (hasAttendanceToday()) {
-            showAlert(Alert.AlertType.WARNING, "Already Clocked In", "You have already clocked in today.");
-            return;
-        }
+        try {
+            // Check if already clocked in today
+            if (hasAttendanceToday()) {
+                showAlert(Alert.AlertType.WARNING, "Already Clocked In", "You have already clocked in today.");
+                return;
+            }
 
-        LocalTime now = LocalTime.now();
-        String timeStr = String.format("%02d:%02d", now.getHour(), now.getMinute());
+            LocalTime now = LocalTime.now();
+            String timeStr = String.format("%02d:%02d", now.getHour(), now.getMinute());
 
-        boolean success = dataStore.saveAttendance(employee.getId(), new Date(), timeStr, null, "hadir");
-        if (success) {
-            showAlert(Alert.AlertType.INFORMATION, "Clock In", "Successfully clocked in at " + timeStr);
-            showDashboardContent(); // Refresh to update buttons
-        } else {
-            showAlert(Alert.AlertType.ERROR, "Error", "Failed to clock in.");
+            boolean success = dataStore.saveAttendance(employee.getId(), new Date(), timeStr, null, "hadir");
+            if (success) {
+                showAlert(Alert.AlertType.INFORMATION, "Clock In", "Successfully clocked in at " + timeStr);
+                showDashboardContent(); // Refresh to update buttons
+            } else {
+                showAlert(Alert.AlertType.ERROR, "Error", "Failed to clock in.");
+            }
+        } catch (Exception e) {
+            System.err.println("Error during clock in: " + e.getMessage());
+            showAlert(Alert.AlertType.ERROR, "Error", "Failed to clock in: " + e.getMessage());
         }
     }
 
     private void clockOut() {
-        // Check if already clocked out today
-        if (hasCompletedAttendanceToday()) {
-            showAlert(Alert.AlertType.WARNING, "Already Clocked Out", "You have already clocked out today.");
-            return;
-        }
+        try {
+            // Check if already clocked out today
+            if (hasCompletedAttendanceToday()) {
+                showAlert(Alert.AlertType.WARNING, "Already Clocked Out", "You have already clocked out today.");
+                return;
+            }
 
-        LocalTime now = LocalTime.now();
-        String timeStr = String.format("%02d:%02d", now.getHour(), now.getMinute());
+            LocalTime now = LocalTime.now();
+            String timeStr = String.format("%02d:%02d", now.getHour(), now.getMinute());
 
-        boolean success = dataStore.updateAttendanceClockOut(employee.getId(), timeStr);
-        if (success) {
-            showAlert(Alert.AlertType.INFORMATION, "Clock Out", "Successfully clocked out at " + timeStr);
-            showDashboardContent(); // Refresh to update buttons
-        } else {
-            showAlert(Alert.AlertType.ERROR, "Error", "Failed to clock out.");
+            boolean success = dataStore.updateAttendanceClockOut(employee.getId(), timeStr);
+            if (success) {
+                showAlert(Alert.AlertType.INFORMATION, "Clock Out", "Successfully clocked out at " + timeStr);
+                showDashboardContent(); // Refresh to update buttons
+            } else {
+                showAlert(Alert.AlertType.ERROR, "Error", "Failed to clock out.");
+            }
+        } catch (Exception e) {
+            System.err.println("Error during clock out: " + e.getMessage());
+            showAlert(Alert.AlertType.ERROR, "Error", "Failed to clock out: " + e.getMessage());
         }
     }
 
@@ -497,8 +519,12 @@ public class EmployeeDashboard extends Application {
 
         TableColumn<Meeting, String> organizerCol = new TableColumn<>("Organizer");
         organizerCol.setCellValueFactory(cellData -> {
-            Employee organizer = dataStore.getEmployeeById(cellData.getValue().getOrganizerId());
-            return new javafx.beans.property.SimpleStringProperty(organizer != null ? organizer.getNama() : "Unknown");
+            try {
+                Employee organizer = dataStore.getEmployeeById(cellData.getValue().getOrganizerId());
+                return new javafx.beans.property.SimpleStringProperty(organizer != null ? organizer.getNama() : "Unknown");
+            } catch (Exception e) {
+                return new javafx.beans.property.SimpleStringProperty("Error");
+            }
         });
         organizerCol.setPrefWidth(150);
 
@@ -508,10 +534,15 @@ public class EmployeeDashboard extends Application {
 
         table.getColumns().addAll(titleCol, dateCol, timeCol, locationCol, organizerCol, statusCol);
 
-        // INTEGRATED: Get meetings where this employee is a participant
-        List<Meeting> myMeetings = dataStore.getMeetingsByEmployee(employee.getId());
-        ObservableList<Meeting> meetingData = FXCollections.observableArrayList(myMeetings);
-        table.setItems(meetingData);
+        try {
+            // INTEGRATED: Get meetings where this employee is a participant
+            List<Meeting> myMeetings = dataStore.getMeetingsByEmployee(employee.getId());
+            ObservableList<Meeting> meetingData = FXCollections.observableArrayList(myMeetings);
+            table.setItems(meetingData);
+        } catch (Exception e) {
+            System.err.println("Error loading meetings: " + e.getMessage());
+            showAlert(Alert.AlertType.ERROR, "Error", "Failed to load meetings: " + e.getMessage());
+        }
 
         return table;
     }
@@ -567,12 +598,16 @@ public class EmployeeDashboard extends Application {
 
         TableColumn<LeaveRequest, String> approverCol = new TableColumn<>("Approver");
         approverCol.setCellValueFactory(cellData -> {
-            String approverId = cellData.getValue().getApproverId();
-            if (approverId != null) {
-                Employee approver = dataStore.getEmployeeById(approverId);
-                return new javafx.beans.property.SimpleStringProperty(approver != null ? approver.getNama() : "Unknown");
+            try {
+                String approverId = cellData.getValue().getApproverId();
+                if (approverId != null) {
+                    Employee approver = dataStore.getEmployeeById(approverId);
+                    return new javafx.beans.property.SimpleStringProperty(approver != null ? approver.getNama() : "Unknown");
+                }
+                return new javafx.beans.property.SimpleStringProperty("Pending");
+            } catch (Exception e) {
+                return new javafx.beans.property.SimpleStringProperty("Error");
             }
-            return new javafx.beans.property.SimpleStringProperty("Pending");
         });
 
         TableColumn<LeaveRequest, String> notesCol = new TableColumn<>("Approval Notes");
@@ -580,10 +615,17 @@ public class EmployeeDashboard extends Application {
 
         table.getColumns().addAll(typeCol, startDateCol, endDateCol, daysCol, statusCol, approverCol, notesCol);
 
-        // INTEGRATED: Get leave requests for this employee
-        List<LeaveRequest> myLeaveRequests = dataStore.getLeaveRequestsByEmployee(employee.getId());
-        ObservableList<LeaveRequest> leaveData = FXCollections.observableArrayList(myLeaveRequests);
-        table.setItems(leaveData);
+        try {
+            // INTEGRATED: Get leave requests for this employee
+            List<LeaveRequest> myLeaveRequests = dataStore.getLeaveRequestsByEmployee(employee.getId());
+            ObservableList<LeaveRequest> leaveData = FXCollections.observableArrayList(myLeaveRequests);
+            table.setItems(leaveData);
+            
+            System.out.println("Loaded " + myLeaveRequests.size() + " leave requests for employee: " + employee.getId());
+        } catch (Exception e) {
+            System.err.println("Error loading leave requests: " + e.getMessage());
+            showAlert(Alert.AlertType.ERROR, "Error", "Failed to load leave requests: " + e.getMessage());
+        }
 
         return table;
     }
@@ -635,26 +677,38 @@ public class EmployeeDashboard extends Application {
         reasonArea.setPrefRowCount(3);
 
         // Show who will approve this request
-        String supervisorId = dataStore.getSupervisorByDivision(employee.getDivisi());
-        Employee supervisor = dataStore.getEmployeeById(supervisorId);
-        Label approverInfo = new Label("This request will be sent to: " + 
-                (supervisor != null ? supervisor.getNama() + " (" + supervisor.getJabatan() + ")" : "Your supervisor"));
-        approverInfo.setStyle("-fx-text-fill: #666; -fx-font-style: italic;");
+        try {
+            String supervisorId = dataStore.getSupervisorByDivision(employee.getDivisi());
+            Employee supervisor = dataStore.getEmployeeById(supervisorId);
+            Label approverInfo = new Label("This request will be sent to: " + 
+                    (supervisor != null ? supervisor.getNama() + " (" + supervisor.getJabatan() + ")" : "Your supervisor"));
+            approverInfo.setStyle("-fx-text-fill: #666; -fx-font-style: italic;");
 
-        content.getChildren().addAll(
-                new Label("Leave Type:"), leaveTypeCombo,
-                new Label("Start Date (No weekends):"), startDatePicker,
-                new Label("End Date (No weekends):"), endDatePicker,
-                new Label("Reason:"), reasonArea,
-                approverInfo
-        );
+            content.getChildren().addAll(
+                    new Label("Leave Type:"), leaveTypeCombo,
+                    new Label("Start Date (No weekends):"), startDatePicker,
+                    new Label("End Date (No weekends):"), endDatePicker,
+                    new Label("Reason:"), reasonArea,
+                    approverInfo
+            );
+        } catch (Exception e) {
+            System.err.println("Error getting supervisor info: " + e.getMessage());
+            content.getChildren().addAll(
+                    new Label("Leave Type:"), leaveTypeCombo,
+                    new Label("Start Date (No weekends):"), startDatePicker,
+                    new Label("End Date (No weekends):"), endDatePicker,
+                    new Label("Reason:"), reasonArea
+            );
+        }
 
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
         dialog.showAndWait().ifPresent(result -> {
             if (result == ButtonType.OK) {
-                if (startDatePicker.getValue() != null && endDatePicker.getValue() != null) {
+                if (startDatePicker.getValue() != null && endDatePicker.getValue() != null && 
+                    !reasonArea.getText().trim().isEmpty()) {
+                    
                     // Validate that dates are not weekends
                     LocalDate startDate = startDatePicker.getValue();
                     LocalDate endDate = endDatePicker.getValue();
@@ -667,29 +721,50 @@ public class EmployeeDashboard extends Application {
                         return;
                     }
 
-                    Date startSqlDate = java.sql.Date.valueOf(startDate);
-                    Date endSqlDate = java.sql.Date.valueOf(endDate);
+                    if (endDate.isBefore(startDate)) {
+                        showAlert(Alert.AlertType.WARNING, "Invalid Date", "End date cannot be before start date.");
+                        return;
+                    }
 
-                    // Logging for debugging
-                    System.out.println("Submitting leave request with the following data:");
-                    System.out.println("Employee ID: " + employee.getId());
-                    System.out.println("Leave Type: " + leaveTypeCombo.getValue());
-                    System.out.println("Start Date: " + startSqlDate);
-                    System.out.println("End Date: " + endSqlDate);
-                    System.out.println("Reason: " + reasonArea.getText());
+                    try {
+                        Date startSqlDate = java.sql.Date.valueOf(startDate);
+                        Date endSqlDate = java.sql.Date.valueOf(endDate);
 
-                    boolean success = dataStore.saveLeaveRequest(employee.getId(), leaveTypeCombo.getValue(),
-                            startSqlDate, endSqlDate, reasonArea.getText());
-                    if (success) {
-                        showAlert(Alert.AlertType.INFORMATION, "Success", 
-                                "Leave request submitted successfully!\nIt will be reviewed by " +
-                                (supervisor != null ? supervisor.getNama() : "your supervisor") + ".");
-                        showLeaveRequests(); // Refresh the leave requests view
-                    } else {
-                        showAlert(Alert.AlertType.ERROR, "Error", "Failed to submit leave request.");
+                        // Logging for debugging
+                        System.out.println("Submitting leave request with the following data:");
+                        System.out.println("Employee ID: " + employee.getId());
+                        System.out.println("Leave Type: " + leaveTypeCombo.getValue());
+                        System.out.println("Start Date: " + startSqlDate);
+                        System.out.println("End Date: " + endSqlDate);
+                        System.out.println("Reason: " + reasonArea.getText());
+
+                        boolean success = dataStore.saveLeaveRequest(employee.getId(), leaveTypeCombo.getValue(),
+                                startSqlDate, endSqlDate, reasonArea.getText().trim());
+                        
+                        if (success) {
+                            try {
+                                String supervisorId = dataStore.getSupervisorByDivision(employee.getDivisi());
+                                Employee supervisor = dataStore.getEmployeeById(supervisorId);
+                                showAlert(Alert.AlertType.INFORMATION, "Success", 
+                                        "Leave request submitted successfully!\nIt will be reviewed by " +
+                                        (supervisor != null ? supervisor.getNama() : "your supervisor") + ".");
+                            } catch (Exception e) {
+                                showAlert(Alert.AlertType.INFORMATION, "Success", 
+                                        "Leave request submitted successfully!\nIt will be reviewed by your supervisor.");
+                            }
+                            
+                            // Refresh the leave requests view to show the new request
+                            showLeaveRequests();
+                        } else {
+                            showAlert(Alert.AlertType.ERROR, "Error", "Failed to submit leave request. Please try again.");
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error submitting leave request: " + e.getMessage());
+                        e.printStackTrace();
+                        showAlert(Alert.AlertType.ERROR, "Error", "Failed to submit leave request: " + e.getMessage());
                     }
                 } else {
-                    showAlert(Alert.AlertType.WARNING, "Invalid Input", "Please select start and end dates.");
+                    showAlert(Alert.AlertType.WARNING, "Invalid Input", "Please fill in all required fields.");
                 }
             }
         });
@@ -735,9 +810,14 @@ public class EmployeeDashboard extends Application {
 
         table.getColumns().addAll(dateCol, clockInCol, clockOutCol, statusCol, lateCol);
 
-        List<Attendance> myAttendance = dataStore.getAttendanceByEmployee(employee.getId());
-        ObservableList<Attendance> attendanceData = FXCollections.observableArrayList(myAttendance);
-        table.setItems(attendanceData);
+        try {
+            List<Attendance> myAttendance = dataStore.getAttendanceByEmployee(employee.getId());
+            ObservableList<Attendance> attendanceData = FXCollections.observableArrayList(myAttendance);
+            table.setItems(attendanceData);
+        } catch (Exception e) {
+            System.err.println("Error loading attendance: " + e.getMessage());
+            showAlert(Alert.AlertType.ERROR, "Error", "Failed to load attendance: " + e.getMessage());
+        }
 
         return table;
     }
@@ -813,8 +893,12 @@ public class EmployeeDashboard extends Application {
 
         TableColumn<EmployeeEvaluation, String> supervisorCol = new TableColumn<>("Supervisor");
         supervisorCol.setCellValueFactory(cellData -> {
-            Employee supervisor = dataStore.getEmployeeById(cellData.getValue().getSupervisorId());
-            return new javafx.beans.property.SimpleStringProperty(supervisor != null ? supervisor.getNama() : "Unknown");
+            try {
+                Employee supervisor = dataStore.getEmployeeById(cellData.getValue().getSupervisorId());
+                return new javafx.beans.property.SimpleStringProperty(supervisor != null ? supervisor.getNama() : "Unknown");
+            } catch (Exception e) {
+                return new javafx.beans.property.SimpleStringProperty("Error");
+            }
         });
 
         TableColumn<EmployeeEvaluation, String> punctualityCol = new TableColumn<>("Punctuality");
@@ -834,9 +918,14 @@ public class EmployeeDashboard extends Application {
 
         table.getColumns().addAll(dateCol, supervisorCol, punctualityCol, attendanceCol, overallCol, commentsCol);
 
-        List<EmployeeEvaluation> myEvaluations = dataStore.getEvaluationsByEmployee(employee.getId());
-        ObservableList<EmployeeEvaluation> evaluationData = FXCollections.observableArrayList(myEvaluations);
-        table.setItems(evaluationData);
+        try {
+            List<EmployeeEvaluation> myEvaluations = dataStore.getEvaluationsByEmployee(employee.getId());
+            ObservableList<EmployeeEvaluation> evaluationData = FXCollections.observableArrayList(myEvaluations);
+            table.setItems(evaluationData);
+        } catch (Exception e) {
+            System.err.println("Error loading evaluations: " + e.getMessage());
+            showAlert(Alert.AlertType.ERROR, "Error", "Failed to load evaluations: " + e.getMessage());
+        }
 
         return table;
     }
@@ -967,9 +1056,14 @@ public class EmployeeDashboard extends Application {
 
         table.getColumns().addAll(monthCol, yearCol, baseCol, kpiBonusCol, supervisorBonusCol, totalCol);
 
-        List<SalaryHistory> mySalaryHistory = dataStore.getSalaryHistoryByEmployee(employee.getId());
-        ObservableList<SalaryHistory> salaryData = FXCollections.observableArrayList(mySalaryHistory);
-        table.setItems(salaryData);
+        try {
+            List<SalaryHistory> mySalaryHistory = dataStore.getSalaryHistoryByEmployee(employee.getId());
+            ObservableList<SalaryHistory> salaryData = FXCollections.observableArrayList(mySalaryHistory);
+            table.setItems(salaryData);
+        } catch (Exception e) {
+            System.err.println("Error loading salary history: " + e.getMessage());
+            showAlert(Alert.AlertType.ERROR, "Error", "Failed to load salary history: " + e.getMessage());
+        }
 
         return table;
     }
