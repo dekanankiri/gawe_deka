@@ -6,19 +6,24 @@ import id.ac.stis.pbo.demo1.models.*;
 import java.sql.*;
 import java.util.*;
 import java.util.Date;
-import java.util.logging.Logger;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.Calendar;
+import java.util.logging.Logger;
 
 /**
- * MySQL implementation of IDataStore interface
+ * MySQL implementation of data store for GAWE application
+ * Provides database operations with proper error handling and logging
  */
 public class MySQLDataStore implements IDataStore {
     private static final Logger logger = Logger.getLogger(MySQLDataStore.class.getName());
     private final DatabaseConnection dbConnection;
 
-    // Monthly Evaluation inner class
+    // Monthly Evaluation class
     public static class MonthlyEvaluation {
         private int id;
         private String employeeId;
@@ -82,17 +87,16 @@ public class MySQLDataStore implements IDataStore {
 
     private void initializeDatabase() {
         try {
-            // Initialize database using MySQLDatabaseManager
-            id.ac.stis.pbo.demo1.database.MySQLDatabaseManager dbManager = 
-                new id.ac.stis.pbo.demo1.database.MySQLDatabaseManager();
-            dbManager.initializeDatabase();
-            logger.info("MySQL database initialized successfully");
-        } catch (Exception e) {
-            logger.severe("Failed to initialize MySQL database: " + e.getMessage());
-            throw new DatabaseException.InitializationException("Database initialization failed", e);
+            // Test connection
+            try (Connection conn = dbConnection.getConnection()) {
+                logger.info("MySQL DataStore initialized successfully");
+            }
+        } catch (SQLException e) {
+            throw new DatabaseException.InitializationException("Failed to initialize MySQL DataStore", e);
         }
     }
 
+    // Authentication
     @Override
     public Employee authenticateUser(String employeeId, String password) {
         String query = "SELECT * FROM employees WHERE id = ? AND password = ?";
@@ -109,12 +113,13 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error authenticating user: " + e.getMessage());
-            throw new DatabaseException.AuthenticationException("Authentication failed");
+            throw new DatabaseException.AuthenticationException("Authentication failed for user: " + employeeId);
         }
         
         return null;
     }
 
+    // Employee operations
     @Override
     public List<Employee> getAllEmployees() {
         List<Employee> employees = new ArrayList<>();
@@ -129,7 +134,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting all employees: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get employees", e);
+            throw new DatabaseException.QueryException("Failed to retrieve employees", e);
         }
         
         return employees;
@@ -151,7 +156,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting employees by role: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get employees by role", e);
+            throw new DatabaseException.QueryException("Failed to retrieve employees by role", e);
         }
         
         return employees;
@@ -173,7 +178,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting employees by division: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get employees by division", e);
+            throw new DatabaseException.QueryException("Failed to retrieve employees by division", e);
         }
         
         return employees;
@@ -194,7 +199,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting employee by ID: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get employee by ID", e);
+            throw new DatabaseException.QueryException("Failed to retrieve employee by ID", e);
         }
         
         return null;
@@ -231,6 +236,7 @@ public class MySQLDataStore implements IDataStore {
         }
     }
 
+    // KPI operations
     @Override
     public List<KPI> getAllKPI() {
         List<KPI> kpiList = new ArrayList<>();
@@ -245,7 +251,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting all KPI: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get KPI", e);
+            throw new DatabaseException.QueryException("Failed to retrieve KPI data", e);
         }
         
         return kpiList;
@@ -267,7 +273,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting KPI by division: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get KPI by division", e);
+            throw new DatabaseException.QueryException("Failed to retrieve KPI by division", e);
         }
         
         return kpiList;
@@ -293,7 +299,7 @@ public class MySQLDataStore implements IDataStore {
             int result = pstmt.executeUpdate();
             
             // Update employee layoff risk based on KPI
-            updateEmployeeLayoffRisk(divisi, score);
+            updateEmployeeKPIScores(divisi, score);
             
             return result > 0;
         } catch (SQLException e) {
@@ -302,21 +308,22 @@ public class MySQLDataStore implements IDataStore {
         }
     }
 
-    private void updateEmployeeLayoffRisk(String divisi, double kpiScore) {
-        String query = "UPDATE employees SET layoff_risk = ?, kpi_score = ? WHERE divisi = ? AND role = 'pegawai'";
+    private void updateEmployeeKPIScores(String divisi, double kpiScore) {
+        String query = "UPDATE employees SET kpi_score = ?, layoff_risk = ? WHERE divisi = ? AND role = 'pegawai'";
         
         try (Connection conn = dbConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
-            pstmt.setBoolean(1, kpiScore < 60.0);
-            pstmt.setDouble(2, kpiScore);
+            pstmt.setDouble(1, kpiScore);
+            pstmt.setBoolean(2, kpiScore < 60.0);
             pstmt.setString(3, divisi);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            logger.severe("Error updating layoff risk: " + e.getMessage());
+            logger.severe("Error updating employee KPI scores: " + e.getMessage());
         }
     }
 
+    // Report operations
     @Override
     public List<Report> getAllReports() {
         List<Report> reports = new ArrayList<>();
@@ -331,7 +338,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting all reports: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get reports", e);
+            throw new DatabaseException.QueryException("Failed to retrieve reports", e);
         }
         
         return reports;
@@ -351,7 +358,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting pending reports: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get pending reports", e);
+            throw new DatabaseException.QueryException("Failed to retrieve pending reports", e);
         }
         
         return reports;
@@ -373,7 +380,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting reports by division: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get reports by division", e);
+            throw new DatabaseException.QueryException("Failed to retrieve reports by division", e);
         }
         
         return reports;
@@ -381,7 +388,10 @@ public class MySQLDataStore implements IDataStore {
 
     @Override
     public boolean saveReport(String supervisorId, String divisi, int bulan, int tahun, String filePath) {
-        String query = "INSERT INTO reports (supervisor_id, divisi, bulan, tahun, file_path) VALUES (?, ?, ?, ?, ?)";
+        String query = """
+            INSERT INTO reports (supervisor_id, divisi, bulan, tahun, file_path) 
+            VALUES (?, ?, ?, ?, ?)
+        """;
         
         try (Connection conn = dbConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
@@ -401,7 +411,10 @@ public class MySQLDataStore implements IDataStore {
 
     @Override
     public boolean updateReportStatus(int reportId, String status, String managerNotes, String reviewedBy) {
-        String query = "UPDATE reports SET status = ?, manager_notes = ?, reviewed_by = ?, reviewed_date = CURRENT_TIMESTAMP WHERE id = ?";
+        String query = """
+            UPDATE reports SET status = ?, manager_notes = ?, reviewed_by = ?, reviewed_date = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        """;
         
         try (Connection conn = dbConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
@@ -418,6 +431,245 @@ public class MySQLDataStore implements IDataStore {
         }
     }
 
+    // Employee Evaluation operations
+    public List<EmployeeEvaluation> getAllEvaluations() {
+        List<EmployeeEvaluation> evaluations = new ArrayList<>();
+        String query = "SELECT * FROM employee_evaluations ORDER BY evaluation_date DESC";
+        
+        try (Connection conn = dbConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+            
+            while (rs.next()) {
+                evaluations.add(mapResultSetToEmployeeEvaluation(rs));
+            }
+        } catch (SQLException e) {
+            logger.severe("Error getting all evaluations: " + e.getMessage());
+            throw new DatabaseException.QueryException("Failed to retrieve evaluations", e);
+        }
+        
+        return evaluations;
+    }
+
+    public List<EmployeeEvaluation> getEvaluationsByEmployee(String employeeId) {
+        List<EmployeeEvaluation> evaluations = new ArrayList<>();
+        String query = "SELECT * FROM employee_evaluations WHERE employee_id = ? ORDER BY evaluation_date DESC";
+        
+        try (Connection conn = dbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            
+            pstmt.setString(1, employeeId);
+            ResultSet rs = pstmt.executeQuery();
+            
+            while (rs.next()) {
+                evaluations.add(mapResultSetToEmployeeEvaluation(rs));
+            }
+        } catch (SQLException e) {
+            logger.severe("Error getting evaluations by employee: " + e.getMessage());
+            throw new DatabaseException.QueryException("Failed to retrieve evaluations by employee", e);
+        }
+        
+        return evaluations;
+    }
+
+    public List<EmployeeEvaluation> getEvaluationsBySupervisor(String supervisorId) {
+        List<EmployeeEvaluation> evaluations = new ArrayList<>();
+        String query = "SELECT * FROM employee_evaluations WHERE supervisor_id = ? ORDER BY evaluation_date DESC";
+        
+        try (Connection conn = dbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            
+            pstmt.setString(1, supervisorId);
+            ResultSet rs = pstmt.executeQuery();
+            
+            while (rs.next()) {
+                evaluations.add(mapResultSetToEmployeeEvaluation(rs));
+            }
+        } catch (SQLException e) {
+            logger.severe("Error getting evaluations by supervisor: " + e.getMessage());
+            throw new DatabaseException.QueryException("Failed to retrieve evaluations by supervisor", e);
+        }
+        
+        return evaluations;
+    }
+
+    public boolean saveEmployeeEvaluation(String employeeId, String supervisorId,
+                                         double punctualityScore, double attendanceScore,
+                                         double overallRating, String comments) {
+        String query = """
+            INSERT INTO employee_evaluations 
+            (employee_id, supervisor_id, punctuality_score, attendance_score, overall_rating, comments) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        """;
+        
+        try (Connection conn = dbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            
+            pstmt.setString(1, employeeId);
+            pstmt.setString(2, supervisorId);
+            pstmt.setDouble(3, punctualityScore);
+            pstmt.setDouble(4, attendanceScore);
+            pstmt.setDouble(5, overallRating);
+            pstmt.setString(6, comments);
+            
+            int result = pstmt.executeUpdate();
+            
+            // Update employee supervisor rating
+            updateEmployeeSupervisorRating(employeeId, overallRating);
+            
+            return result > 0;
+        } catch (SQLException e) {
+            logger.severe("Error saving employee evaluation: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private void updateEmployeeSupervisorRating(String employeeId, double rating) {
+        String query = "UPDATE employees SET supervisor_rating = ?, layoff_risk = ? WHERE id = ?";
+        
+        try (Connection conn = dbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            
+            // Get current KPI score to determine layoff risk
+            Employee employee = getEmployeeById(employeeId);
+            boolean layoffRisk = (employee != null && employee.getKpiScore() < 60) || rating < 60;
+            
+            pstmt.setDouble(1, rating);
+            pstmt.setBoolean(2, layoffRisk);
+            pstmt.setString(3, employeeId);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            logger.severe("Error updating supervisor rating: " + e.getMessage());
+        }
+    }
+
+    // Monthly Evaluation operations
+    public boolean hasMonthlyEvaluation(String employeeId, int month, int year) {
+        String query = "SELECT COUNT(*) FROM monthly_evaluations WHERE employee_id = ? AND month = ? AND year = ?";
+        
+        try (Connection conn = dbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            
+            pstmt.setString(1, employeeId);
+            pstmt.setInt(2, month);
+            pstmt.setInt(3, year);
+            
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            logger.severe("Error checking monthly evaluation: " + e.getMessage());
+        }
+        
+        return false;
+    }
+
+    public boolean saveMonthlyEmployeeEvaluation(String employeeId, String supervisorId,
+                                                int month, int year,
+                                                double punctualityScore, double attendanceScore,
+                                                double productivityScore, double overallRating,
+                                                String comments) {
+        String query = """
+            INSERT INTO monthly_evaluations 
+            (employee_id, supervisor_id, month, year, punctuality_score, attendance_score, 
+             productivity_score, overall_rating, comments) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+            punctuality_score = VALUES(punctuality_score),
+            attendance_score = VALUES(attendance_score),
+            productivity_score = VALUES(productivity_score),
+            overall_rating = VALUES(overall_rating),
+            comments = VALUES(comments)
+        """;
+        
+        try (Connection conn = dbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            
+            pstmt.setString(1, employeeId);
+            pstmt.setString(2, supervisorId);
+            pstmt.setInt(3, month);
+            pstmt.setInt(4, year);
+            pstmt.setDouble(5, punctualityScore);
+            pstmt.setDouble(6, attendanceScore);
+            pstmt.setDouble(7, productivityScore);
+            pstmt.setDouble(8, overallRating);
+            pstmt.setString(9, comments);
+            
+            int result = pstmt.executeUpdate();
+            
+            // Update employee supervisor rating with latest monthly evaluation
+            updateEmployeeSupervisorRating(employeeId, overallRating);
+            
+            return result > 0;
+        } catch (SQLException e) {
+            logger.severe("Error saving monthly employee evaluation: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public List<MonthlyEvaluation> getAllMonthlyEvaluations() {
+        List<MonthlyEvaluation> evaluations = new ArrayList<>();
+        String query = "SELECT * FROM monthly_evaluations ORDER BY year DESC, month DESC";
+        
+        try (Connection conn = dbConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+            
+            while (rs.next()) {
+                evaluations.add(mapResultSetToMonthlyEvaluation(rs));
+            }
+        } catch (SQLException e) {
+            logger.severe("Error getting all monthly evaluations: " + e.getMessage());
+            throw new DatabaseException.QueryException("Failed to retrieve monthly evaluations", e);
+        }
+        
+        return evaluations;
+    }
+
+    public List<MonthlyEvaluation> getMonthlyEvaluationsByEmployee(String employeeId) {
+        List<MonthlyEvaluation> evaluations = new ArrayList<>();
+        String query = "SELECT * FROM monthly_evaluations WHERE employee_id = ? ORDER BY year DESC, month DESC";
+        
+        try (Connection conn = dbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            
+            pstmt.setString(1, employeeId);
+            ResultSet rs = pstmt.executeQuery();
+            
+            while (rs.next()) {
+                evaluations.add(mapResultSetToMonthlyEvaluation(rs));
+            }
+        } catch (SQLException e) {
+            logger.severe("Error getting monthly evaluations by employee: " + e.getMessage());
+            throw new DatabaseException.QueryException("Failed to retrieve monthly evaluations by employee", e);
+        }
+        
+        return evaluations;
+    }
+
+    public List<MonthlyEvaluation> getMonthlyEvaluationsBySupervisor(String supervisorId) {
+        List<MonthlyEvaluation> evaluations = new ArrayList<>();
+        String query = "SELECT * FROM monthly_evaluations WHERE supervisor_id = ? ORDER BY year DESC, month DESC";
+        
+        try (Connection conn = dbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            
+            pstmt.setString(1, supervisorId);
+            ResultSet rs = pstmt.executeQuery();
+            
+            while (rs.next()) {
+                evaluations.add(mapResultSetToMonthlyEvaluation(rs));
+            }
+        } catch (SQLException e) {
+            logger.severe("Error getting monthly evaluations by supervisor: " + e.getMessage());
+            throw new DatabaseException.QueryException("Failed to retrieve monthly evaluations by supervisor", e);
+        }
+        
+        return evaluations;
+    }
+
+    // Attendance operations
     @Override
     public List<Attendance> getAllAttendance() {
         List<Attendance> attendanceList = new ArrayList<>();
@@ -432,7 +684,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting all attendance: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get attendance", e);
+            throw new DatabaseException.QueryException("Failed to retrieve attendance", e);
         }
         
         return attendanceList;
@@ -454,7 +706,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting attendance by employee: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get attendance by employee", e);
+            throw new DatabaseException.QueryException("Failed to retrieve attendance by employee", e);
         }
         
         return attendanceList;
@@ -476,7 +728,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting today's attendance: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get today's attendance", e);
+            throw new DatabaseException.QueryException("Failed to retrieve today's attendance", e);
         }
         
         return attendanceList;
@@ -487,8 +739,11 @@ public class MySQLDataStore implements IDataStore {
         String query = """
             INSERT INTO attendance (employee_id, tanggal, jam_masuk, jam_keluar, status, is_late) 
             VALUES (?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE jam_masuk = VALUES(jam_masuk), jam_keluar = VALUES(jam_keluar), 
-            status = VALUES(status), is_late = VALUES(is_late)
+            ON DUPLICATE KEY UPDATE 
+            jam_masuk = VALUES(jam_masuk),
+            jam_keluar = VALUES(jam_keluar),
+            status = VALUES(status),
+            is_late = VALUES(is_late)
         """;
         
         try (Connection conn = dbConnection.getConnection();
@@ -520,7 +775,7 @@ public class MySQLDataStore implements IDataStore {
             
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            logger.severe("Error updating clock out: " + e.getMessage());
+            logger.severe("Error updating attendance clock out: " + e.getMessage());
             return false;
         }
     }
@@ -537,14 +792,15 @@ public class MySQLDataStore implements IDataStore {
         }
     }
 
+    // Meeting operations
     @Override
     public List<Meeting> getAllMeetings() {
         List<Meeting> meetings = new ArrayList<>();
         String query = """
-            SELECT m.*, GROUP_CONCAT(mp.participant_id) as participants 
-            FROM meetings m 
-            LEFT JOIN meeting_participants mp ON m.id = mp.meeting_id 
-            GROUP BY m.id 
+            SELECT m.*, GROUP_CONCAT(mp.participant_id) as participant_ids
+            FROM meetings m
+            LEFT JOIN meeting_participants mp ON m.id = mp.meeting_id
+            GROUP BY m.id
             ORDER BY m.tanggal ASC
         """;
         
@@ -557,7 +813,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting all meetings: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get meetings", e);
+            throw new DatabaseException.QueryException("Failed to retrieve meetings", e);
         }
         
         return meetings;
@@ -567,12 +823,12 @@ public class MySQLDataStore implements IDataStore {
     public List<Meeting> getMeetingsByEmployee(String employeeId) {
         List<Meeting> meetings = new ArrayList<>();
         String query = """
-            SELECT DISTINCT m.*, GROUP_CONCAT(mp2.participant_id) as participants 
-            FROM meetings m 
-            LEFT JOIN meeting_participants mp ON m.id = mp.meeting_id 
-            LEFT JOIN meeting_participants mp2 ON m.id = mp2.meeting_id 
-            WHERE m.organizer_id = ? OR mp.participant_id = ? 
-            GROUP BY m.id 
+            SELECT DISTINCT m.*, GROUP_CONCAT(mp2.participant_id) as participant_ids
+            FROM meetings m
+            LEFT JOIN meeting_participants mp ON m.id = mp.meeting_id
+            LEFT JOIN meeting_participants mp2 ON m.id = mp2.meeting_id
+            WHERE m.organizer_id = ? OR mp.participant_id = ?
+            GROUP BY m.id
             ORDER BY m.tanggal ASC
         """;
         
@@ -588,7 +844,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting meetings by employee: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get meetings by employee", e);
+            throw new DatabaseException.QueryException("Failed to retrieve meetings by employee", e);
         }
         
         return meetings;
@@ -598,11 +854,11 @@ public class MySQLDataStore implements IDataStore {
     public List<Meeting> getUpcomingMeetings() {
         List<Meeting> meetings = new ArrayList<>();
         String query = """
-            SELECT m.*, GROUP_CONCAT(mp.participant_id) as participants 
-            FROM meetings m 
-            LEFT JOIN meeting_participants mp ON m.id = mp.meeting_id 
-            WHERE m.tanggal >= CURDATE() 
-            GROUP BY m.id 
+            SELECT m.*, GROUP_CONCAT(mp.participant_id) as participant_ids
+            FROM meetings m
+            LEFT JOIN meeting_participants mp ON m.id = mp.meeting_id
+            WHERE m.tanggal >= CURDATE()
+            GROUP BY m.id
             ORDER BY m.tanggal ASC
         """;
         
@@ -615,7 +871,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting upcoming meetings: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get upcoming meetings", e);
+            throw new DatabaseException.QueryException("Failed to retrieve upcoming meetings", e);
         }
         
         return meetings;
@@ -624,18 +880,18 @@ public class MySQLDataStore implements IDataStore {
     @Override
     public boolean saveMeeting(String title, String description, Date tanggal, String waktuMulai,
                               String waktuSelesai, String lokasi, String organizerId, List<String> participantIds) {
-        String meetingQuery = """
+        String insertMeetingQuery = """
             INSERT INTO meetings (title, description, tanggal, waktu_mulai, waktu_selesai, lokasi, organizer_id) 
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """;
         
-        String participantQuery = "INSERT INTO meeting_participants (meeting_id, participant_id) VALUES (?, ?)";
+        String insertParticipantQuery = "INSERT INTO meeting_participants (meeting_id, participant_id) VALUES (?, ?)";
         
         try (Connection conn = dbConnection.getConnection()) {
             conn.setAutoCommit(false);
             
-            try (PreparedStatement meetingStmt = conn.prepareStatement(meetingQuery, Statement.RETURN_GENERATED_KEYS);
-                 PreparedStatement participantStmt = conn.prepareStatement(participantQuery)) {
+            try (PreparedStatement meetingStmt = conn.prepareStatement(insertMeetingQuery, Statement.RETURN_GENERATED_KEYS);
+                 PreparedStatement participantStmt = conn.prepareStatement(insertParticipantQuery)) {
                 
                 // Insert meeting
                 meetingStmt.setString(1, title);
@@ -666,7 +922,6 @@ public class MySQLDataStore implements IDataStore {
                 
                 conn.commit();
                 return result > 0;
-                
             } catch (SQLException e) {
                 conn.rollback();
                 throw e;
@@ -696,6 +951,7 @@ public class MySQLDataStore implements IDataStore {
         }
     }
 
+    // Leave Request operations
     @Override
     public List<LeaveRequest> getAllLeaveRequests() {
         List<LeaveRequest> leaveRequests = new ArrayList<>();
@@ -710,7 +966,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting all leave requests: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get leave requests", e);
+            throw new DatabaseException.QueryException("Failed to retrieve leave requests", e);
         }
         
         return leaveRequests;
@@ -734,7 +990,7 @@ public class MySQLDataStore implements IDataStore {
             logger.info("Retrieved " + leaveRequests.size() + " leave requests for employee: " + employeeId);
         } catch (SQLException e) {
             logger.severe("Error getting leave requests by employee: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get leave requests by employee", e);
+            throw new DatabaseException.QueryException("Failed to retrieve leave requests by employee", e);
         }
         
         return leaveRequests;
@@ -754,7 +1010,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting pending leave requests: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get pending leave requests", e);
+            throw new DatabaseException.QueryException("Failed to retrieve pending leave requests", e);
         }
         
         return leaveRequests;
@@ -772,21 +1028,24 @@ public class MySQLDataStore implements IDataStore {
         if (approver.getRole().equals("supervisor")) {
             // Supervisors approve employees in their division
             query = """
-                SELECT lr.* FROM leave_requests lr 
-                JOIN employees e ON lr.employee_id = e.id 
-                WHERE lr.status = 'pending' AND e.role = 'pegawai' AND e.divisi = ? 
+                SELECT lr.* FROM leave_requests lr
+                JOIN employees e ON lr.employee_id = e.id
+                WHERE lr.status = 'pending' 
+                AND e.role = 'pegawai' 
+                AND e.divisi = ?
                 ORDER BY lr.request_date ASC
             """;
         } else if (approver.getRole().equals("manajer")) {
             // Managers approve supervisors and can approve any employee
             query = """
-                SELECT lr.* FROM leave_requests lr 
-                JOIN employees e ON lr.employee_id = e.id 
-                WHERE lr.status = 'pending' AND (e.role = 'supervisor' OR e.role = 'pegawai') 
+                SELECT lr.* FROM leave_requests lr
+                JOIN employees e ON lr.employee_id = e.id
+                WHERE lr.status = 'pending' 
+                AND (e.role = 'supervisor' OR e.role = 'pegawai')
                 ORDER BY lr.request_date ASC
             """;
         } else {
-            return leaveRequests; // Regular employees can't approve
+            return leaveRequests; // Regular employees can't approve requests
         }
         
         try (Connection conn = dbConnection.getConnection();
@@ -801,11 +1060,9 @@ public class MySQLDataStore implements IDataStore {
             while (rs.next()) {
                 leaveRequests.add(mapResultSetToLeaveRequest(rs));
             }
-            
-            logger.info("Retrieved " + leaveRequests.size() + " leave requests for approval by: " + approverId);
         } catch (SQLException e) {
             logger.severe("Error getting leave requests for approval: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get leave requests for approval", e);
+            throw new DatabaseException.QueryException("Failed to retrieve leave requests for approval", e);
         }
         
         return leaveRequests;
@@ -834,8 +1091,7 @@ public class MySQLDataStore implements IDataStore {
             pstmt.setString(6, reason);
             
             int result = pstmt.executeUpdate();
-            
-            logger.info("Leave request saved for employee: " + employeeId + ", result: " + result);
+            logger.info("Leave request saved for employee " + employeeId + ": " + (result > 0 ? "SUCCESS" : "FAILED"));
             return result > 0;
         } catch (SQLException e) {
             logger.severe("Error saving leave request: " + e.getMessage());
@@ -847,7 +1103,8 @@ public class MySQLDataStore implements IDataStore {
     @Override
     public boolean approveLeaveRequest(int leaveRequestId, String approverId, String notes) {
         String query = """
-            UPDATE leave_requests SET status = 'approved', approver_id = ?, approver_notes = ?, approval_date = CURRENT_TIMESTAMP 
+            UPDATE leave_requests 
+            SET status = 'approved', approver_id = ?, approver_notes = ?, approval_date = CURRENT_TIMESTAMP 
             WHERE id = ?
         """;
         
@@ -862,22 +1119,15 @@ public class MySQLDataStore implements IDataStore {
                 int result = pstmt.executeUpdate();
                 
                 if (result > 0) {
-                    // Get leave request details to deduct leave days
-                    LeaveRequest request = getLeaveRequestById(leaveRequestId);
-                    if (request != null) {
-                        // Deduct leave days from employee
-                        String updateEmployeeQuery = "UPDATE employees SET sisa_cuti = sisa_cuti - ? WHERE id = ?";
-                        try (PreparedStatement updateStmt = conn.prepareStatement(updateEmployeeQuery)) {
-                            updateStmt.setInt(1, request.getTotalDays());
-                            updateStmt.setString(2, request.getEmployeeId());
-                            updateStmt.executeUpdate();
-                        }
+                    // Deduct leave days from employee
+                    LeaveRequest leaveRequest = getLeaveRequestById(leaveRequestId);
+                    if (leaveRequest != null) {
+                        deductEmployeeLeave(leaveRequest.getEmployeeId(), leaveRequest.getTotalDays());
                     }
                 }
                 
                 conn.commit();
                 return result > 0;
-                
             } catch (SQLException e) {
                 conn.rollback();
                 throw e;
@@ -893,7 +1143,8 @@ public class MySQLDataStore implements IDataStore {
     @Override
     public boolean rejectLeaveRequest(int leaveRequestId, String approverId, String notes) {
         String query = """
-            UPDATE leave_requests SET status = 'rejected', approver_id = ?, approver_notes = ?, approval_date = CURRENT_TIMESTAMP 
+            UPDATE leave_requests 
+            SET status = 'rejected', approver_id = ?, approver_notes = ?, approval_date = CURRENT_TIMESTAMP 
             WHERE id = ?
         """;
         
@@ -911,13 +1162,13 @@ public class MySQLDataStore implements IDataStore {
         }
     }
 
-    private LeaveRequest getLeaveRequestById(int id) {
+    private LeaveRequest getLeaveRequestById(int leaveRequestId) {
         String query = "SELECT * FROM leave_requests WHERE id = ?";
         
         try (Connection conn = dbConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
-            pstmt.setInt(1, id);
+            pstmt.setInt(1, leaveRequestId);
             ResultSet rs = pstmt.executeQuery();
             
             if (rs.next()) {
@@ -930,6 +1181,21 @@ public class MySQLDataStore implements IDataStore {
         return null;
     }
 
+    private void deductEmployeeLeave(String employeeId, int days) {
+        String query = "UPDATE employees SET sisa_cuti = sisa_cuti - ? WHERE id = ?";
+        
+        try (Connection conn = dbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            
+            pstmt.setInt(1, days);
+            pstmt.setString(2, employeeId);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            logger.severe("Error deducting employee leave: " + e.getMessage());
+        }
+    }
+
+    // Salary History operations
     @Override
     public List<SalaryHistory> getAllSalaryHistory() {
         List<SalaryHistory> salaryHistories = new ArrayList<>();
@@ -944,7 +1210,7 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting all salary history: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get salary history", e);
+            throw new DatabaseException.QueryException("Failed to retrieve salary history", e);
         }
         
         return salaryHistories;
@@ -966,12 +1232,13 @@ public class MySQLDataStore implements IDataStore {
             }
         } catch (SQLException e) {
             logger.severe("Error getting salary history by employee: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get salary history by employee", e);
+            throw new DatabaseException.QueryException("Failed to retrieve salary history by employee", e);
         }
         
         return salaryHistories;
     }
 
+    // Utility methods
     @Override
     public String getSupervisorByDivision(String divisi) {
         String query = "SELECT id FROM employees WHERE role = 'supervisor' AND divisi = ? LIMIT 1";
@@ -997,21 +1264,21 @@ public class MySQLDataStore implements IDataStore {
         Map<String, Object> stats = new HashMap<>();
         
         try (Connection conn = dbConnection.getConnection()) {
-            // Get employee counts
-            stats.put("totalEmployees", getEmployeeCount(conn, null));
-            stats.put("totalManagers", getEmployeeCount(conn, "manajer"));
-            stats.put("totalSupervisors", getEmployeeCount(conn, "supervisor"));
-            stats.put("totalEmployeesRegular", getEmployeeCount(conn, "pegawai"));
+            // Total employees by role
+            stats.put("totalEmployees", getEmployeeCountByRole(conn, null));
+            stats.put("totalManagers", getEmployeeCountByRole(conn, "manajer"));
+            stats.put("totalSupervisors", getEmployeeCountByRole(conn, "supervisor"));
+            stats.put("totalEmployeesRegular", getEmployeeCountByRole(conn, "pegawai"));
             
-            // Get layoff risk count
+            // Layoff risk employees
             stats.put("layoffRiskEmployees", getLayoffRiskCount(conn));
             
-            // Get pending counts
-            stats.put("pendingReports", getPendingCount(conn, "reports"));
-            stats.put("pendingLeaveRequests", getPendingCount(conn, "leave_requests"));
+            // Pending items
+            stats.put("pendingReports", getPendingReportsCount(conn));
+            stats.put("pendingLeaveRequests", getPendingLeaveRequestsCount(conn));
             stats.put("upcomingMeetings", getUpcomingMeetingsCount(conn));
             
-            // Get average KPI by division
+            // Average KPI by division
             stats.put("avgKpiByDivision", getAvgKpiByDivision(conn));
             
         } catch (SQLException e) {
@@ -1021,8 +1288,10 @@ public class MySQLDataStore implements IDataStore {
         return stats;
     }
 
-    private int getEmployeeCount(Connection conn, String role) throws SQLException {
-        String query = role != null ? "SELECT COUNT(*) FROM employees WHERE role = ?" : "SELECT COUNT(*) FROM employees";
+    private int getEmployeeCountByRole(Connection conn, String role) throws SQLException {
+        String query = role != null ? 
+            "SELECT COUNT(*) FROM employees WHERE role = ?" : 
+            "SELECT COUNT(*) FROM employees";
         
         try (PreparedStatement pstmt = conn.prepareStatement(query)) {
             if (role != null) {
@@ -1035,16 +1304,22 @@ public class MySQLDataStore implements IDataStore {
 
     private int getLayoffRiskCount(Connection conn) throws SQLException {
         String query = "SELECT COUNT(*) FROM employees WHERE layoff_risk = true";
-        
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
             return rs.next() ? rs.getInt(1) : 0;
         }
     }
 
-    private int getPendingCount(Connection conn, String table) throws SQLException {
-        String query = "SELECT COUNT(*) FROM " + table + " WHERE status = 'pending'";
-        
+    private int getPendingReportsCount(Connection conn) throws SQLException {
+        String query = "SELECT COUNT(*) FROM reports WHERE status = 'pending'";
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+            return rs.next() ? rs.getInt(1) : 0;
+        }
+    }
+
+    private int getPendingLeaveRequestsCount(Connection conn) throws SQLException {
+        String query = "SELECT COUNT(*) FROM leave_requests WHERE status = 'pending'";
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
             return rs.next() ? rs.getInt(1) : 0;
@@ -1053,7 +1328,6 @@ public class MySQLDataStore implements IDataStore {
 
     private int getUpcomingMeetingsCount(Connection conn) throws SQLException {
         String query = "SELECT COUNT(*) FROM meetings WHERE tanggal >= CURDATE()";
-        
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
             return rs.next() ? rs.getInt(1) : 0;
@@ -1066,7 +1340,6 @@ public class MySQLDataStore implements IDataStore {
         
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
-            
             while (rs.next()) {
                 avgKpi.put(rs.getString("divisi"), rs.getDouble("avg_score"));
             }
@@ -1075,170 +1348,7 @@ public class MySQLDataStore implements IDataStore {
         return avgKpi;
     }
 
-    // Additional methods for monthly evaluations
-    public boolean hasMonthlyEvaluation(String employeeId, int month, int year) {
-        String query = "SELECT COUNT(*) FROM monthly_evaluations WHERE employee_id = ? AND month = ? AND year = ?";
-        
-        try (Connection conn = dbConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
-            
-            pstmt.setString(1, employeeId);
-            pstmt.setInt(2, month);
-            pstmt.setInt(3, year);
-            
-            ResultSet rs = pstmt.executeQuery();
-            return rs.next() && rs.getInt(1) > 0;
-        } catch (SQLException e) {
-            logger.severe("Error checking monthly evaluation: " + e.getMessage());
-            return false;
-        }
-    }
-
-    public boolean saveMonthlyEmployeeEvaluation(String employeeId, String supervisorId,
-                                                int month, int year,
-                                                double punctualityScore, double attendanceScore,
-                                                double productivityScore, double overallRating,
-                                                String comments) {
-        String query = """
-            INSERT INTO monthly_evaluations 
-            (employee_id, supervisor_id, month, year, punctuality_score, attendance_score, productivity_score, overall_rating, comments) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE 
-            punctuality_score = VALUES(punctuality_score), 
-            attendance_score = VALUES(attendance_score), 
-            productivity_score = VALUES(productivity_score), 
-            overall_rating = VALUES(overall_rating), 
-            comments = VALUES(comments)
-        """;
-        
-        try (Connection conn = dbConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
-            
-            pstmt.setString(1, employeeId);
-            pstmt.setString(2, supervisorId);
-            pstmt.setInt(3, month);
-            pstmt.setInt(4, year);
-            pstmt.setDouble(5, punctualityScore);
-            pstmt.setDouble(6, attendanceScore);
-            pstmt.setDouble(7, productivityScore);
-            pstmt.setDouble(8, overallRating);
-            pstmt.setString(9, comments);
-            
-            int result = pstmt.executeUpdate();
-            
-            // Update employee supervisor rating with latest monthly evaluation
-            if (result > 0) {
-                updateEmployee(employeeId, overallRating);
-            }
-            
-            return result > 0;
-        } catch (SQLException e) {
-            logger.severe("Error saving monthly evaluation: " + e.getMessage());
-            return false;
-        }
-    }
-
-    private void updateEmployee(String employeeId, double supervisorRating) {
-        String query = "UPDATE employees SET supervisor_rating = ?, layoff_risk = ? WHERE id = ?";
-        
-        try (Connection conn = dbConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
-            
-            Employee emp = getEmployeeById(employeeId);
-            boolean layoffRisk = emp != null && (emp.getKpiScore() < 60 || supervisorRating < 60);
-            
-            pstmt.setDouble(1, supervisorRating);
-            pstmt.setBoolean(2, layoffRisk);
-            pstmt.setString(3, employeeId);
-            
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            logger.severe("Error updating employee: " + e.getMessage());
-        }
-    }
-
-    public boolean saveEmployeeEvaluation(String employeeId, String supervisorId,
-                                         double punctualityScore, double attendanceScore,
-                                         double overallRating, String comments) {
-        String query = """
-            INSERT INTO employee_evaluations 
-            (employee_id, supervisor_id, punctuality_score, attendance_score, overall_rating, comments) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        """;
-        
-        try (Connection conn = dbConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
-            
-            pstmt.setString(1, employeeId);
-            pstmt.setString(2, supervisorId);
-            pstmt.setDouble(3, punctualityScore);
-            pstmt.setDouble(4, attendanceScore);
-            pstmt.setDouble(5, overallRating);
-            pstmt.setString(6, comments);
-            
-            int result = pstmt.executeUpdate();
-            
-            // Update employee supervisor rating
-            if (result > 0) {
-                updateEmployee(employeeId, overallRating);
-            }
-            
-            return result > 0;
-        } catch (SQLException e) {
-            logger.severe("Error saving employee evaluation: " + e.getMessage());
-            return false;
-        }
-    }
-
-    public List<EmployeeEvaluation> getEvaluationsByEmployee(String employeeId) {
-        List<EmployeeEvaluation> evaluations = new ArrayList<>();
-        String query = "SELECT * FROM employee_evaluations WHERE employee_id = ? ORDER BY evaluation_date DESC";
-        
-        try (Connection conn = dbConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
-            
-            pstmt.setString(1, employeeId);
-            ResultSet rs = pstmt.executeQuery();
-            
-            while (rs.next()) {
-                evaluations.add(mapResultSetToEmployeeEvaluation(rs));
-            }
-        } catch (SQLException e) {
-            logger.severe("Error getting evaluations by employee: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get evaluations by employee", e);
-        }
-        
-        return evaluations;
-    }
-
-    public List<EmployeeEvaluation> getEvaluationsBySupervisor(String supervisorId) {
-        List<EmployeeEvaluation> evaluations = new ArrayList<>();
-        String query = "SELECT * FROM employee_evaluations WHERE supervisor_id = ? ORDER BY evaluation_date DESC";
-        
-        try (Connection conn = dbConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
-            
-            pstmt.setString(1, supervisorId);
-            ResultSet rs = pstmt.executeQuery();
-            
-            while (rs.next()) {
-                evaluations.add(mapResultSetToEmployeeEvaluation(rs));
-            }
-        } catch (SQLException e) {
-            logger.severe("Error getting evaluations by supervisor: " + e.getMessage());
-            throw new DatabaseException.QueryException("Failed to get evaluations by supervisor", e);
-        }
-        
-        return evaluations;
-    }
-
-    @Override
-    public void close() {
-        // DatabaseConnection is a singleton, so we don't close it here
-        logger.info("MySQLDataStore closed");
-    }
-
-    // Helper methods to map ResultSet to model objects
+    // Mapping methods
     private Employee mapResultSetToEmployee(ResultSet rs) throws SQLException {
         Employee emp = new Employee();
         emp.setId(rs.getString("id"));
@@ -1285,6 +1395,35 @@ public class MySQLDataStore implements IDataStore {
         return report;
     }
 
+    private EmployeeEvaluation mapResultSetToEmployeeEvaluation(ResultSet rs) throws SQLException {
+        EmployeeEvaluation eval = new EmployeeEvaluation();
+        eval.setId(rs.getInt("id"));
+        eval.setEmployeeId(rs.getString("employee_id"));
+        eval.setSupervisorId(rs.getString("supervisor_id"));
+        eval.setPunctualityScore(rs.getDouble("punctuality_score"));
+        eval.setAttendanceScore(rs.getDouble("attendance_score"));
+        eval.setOverallRating(rs.getDouble("overall_rating"));
+        eval.setEvaluationDate(rs.getTimestamp("evaluation_date"));
+        eval.setComments(rs.getString("comments"));
+        return eval;
+    }
+
+    private MonthlyEvaluation mapResultSetToMonthlyEvaluation(ResultSet rs) throws SQLException {
+        MonthlyEvaluation eval = new MonthlyEvaluation();
+        eval.setId(rs.getInt("id"));
+        eval.setEmployeeId(rs.getString("employee_id"));
+        eval.setSupervisorId(rs.getString("supervisor_id"));
+        eval.setMonth(rs.getInt("month"));
+        eval.setYear(rs.getInt("year"));
+        eval.setPunctualityScore(rs.getDouble("punctuality_score"));
+        eval.setAttendanceScore(rs.getDouble("attendance_score"));
+        eval.setProductivityScore(rs.getDouble("productivity_score"));
+        eval.setOverallRating(rs.getDouble("overall_rating"));
+        eval.setComments(rs.getString("comments"));
+        eval.setEvaluationDate(rs.getTimestamp("evaluation_date"));
+        return eval;
+    }
+
     private Attendance mapResultSetToAttendance(ResultSet rs) throws SQLException {
         Attendance attendance = new Attendance();
         attendance.setId(rs.getInt("id"));
@@ -1321,10 +1460,11 @@ public class MySQLDataStore implements IDataStore {
         meeting.setStatus(rs.getString("status"));
         meeting.setCreatedDate(rs.getTimestamp("created_date"));
         
-        // Parse participants
-        String participants = rs.getString("participants");
-        if (participants != null && !participants.isEmpty()) {
-            meeting.setParticipantIds(Arrays.asList(participants.split(",")));
+        // Parse participant IDs
+        String participantIdsStr = rs.getString("participant_ids");
+        if (participantIdsStr != null && !participantIdsStr.isEmpty()) {
+            List<String> participantIds = Arrays.asList(participantIdsStr.split(","));
+            meeting.setParticipantIds(participantIds);
         } else {
             meeting.setParticipantIds(new ArrayList<>());
         }
@@ -1350,33 +1490,26 @@ public class MySQLDataStore implements IDataStore {
     }
 
     private SalaryHistory mapResultSetToSalaryHistory(ResultSet rs) throws SQLException {
-        SalaryHistory salaryHistory = new SalaryHistory();
-        salaryHistory.setId(rs.getInt("id"));
-        salaryHistory.setEmployeeId(rs.getString("employee_id"));
-        salaryHistory.setBulan(rs.getInt("bulan"));
-        salaryHistory.setTahun(rs.getInt("tahun"));
-        salaryHistory.setBaseSalary(rs.getDouble("base_salary"));
-        salaryHistory.setKpiBonus(rs.getDouble("kpi_bonus"));
-        salaryHistory.setSupervisorBonus(rs.getDouble("supervisor_bonus"));
-        salaryHistory.setPenalty(rs.getDouble("penalty"));
-        salaryHistory.setTotalSalary(rs.getDouble("total_salary"));
-        salaryHistory.setKpiScore(rs.getDouble("kpi_score"));
-        salaryHistory.setSupervisorRating(rs.getDouble("supervisor_rating"));
-        salaryHistory.setPaymentDate(rs.getTimestamp("payment_date"));
-        salaryHistory.setNotes(rs.getString("notes"));
-        return salaryHistory;
+        SalaryHistory salary = new SalaryHistory();
+        salary.setId(rs.getInt("id"));
+        salary.setEmployeeId(rs.getString("employee_id"));
+        salary.setBulan(rs.getInt("bulan"));
+        salary.setTahun(rs.getInt("tahun"));
+        salary.setBaseSalary(rs.getDouble("base_salary"));
+        salary.setKpiBonus(rs.getDouble("kpi_bonus"));
+        salary.setSupervisorBonus(rs.getDouble("supervisor_bonus"));
+        salary.setPenalty(rs.getDouble("penalty"));
+        salary.setTotalSalary(rs.getDouble("total_salary"));
+        salary.setKpiScore(rs.getDouble("kpi_score"));
+        salary.setSupervisorRating(rs.getDouble("supervisor_rating"));
+        salary.setPaymentDate(rs.getTimestamp("payment_date"));
+        salary.setNotes(rs.getString("notes"));
+        return salary;
     }
 
-    private EmployeeEvaluation mapResultSetToEmployeeEvaluation(ResultSet rs) throws SQLException {
-        EmployeeEvaluation evaluation = new EmployeeEvaluation();
-        evaluation.setId(rs.getInt("id"));
-        evaluation.setEmployeeId(rs.getString("employee_id"));
-        evaluation.setSupervisorId(rs.getString("supervisor_id"));
-        evaluation.setPunctualityScore(rs.getDouble("punctuality_score"));
-        evaluation.setAttendanceScore(rs.getDouble("attendance_score"));
-        evaluation.setOverallRating(rs.getDouble("overall_rating"));
-        evaluation.setEvaluationDate(rs.getTimestamp("evaluation_date"));
-        evaluation.setComments(rs.getString("comments"));
-        return evaluation;
+    @Override
+    public void close() {
+        // DatabaseConnection handles its own cleanup
+        logger.info("MySQLDataStore closed");
     }
 }
