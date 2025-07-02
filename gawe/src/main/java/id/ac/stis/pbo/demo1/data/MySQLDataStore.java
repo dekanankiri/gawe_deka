@@ -834,34 +834,21 @@ public class MySQLDataStore {
 
     public List<LeaveRequest> getLeaveRequestsForApproval(String approverId) {
         List<LeaveRequest> leaveRequests = new ArrayList<>();
-        Employee approver = getEmployeeById(approverId);
-        if (approver == null) return leaveRequests;
+        String query = "SELECT * FROM leave_requests WHERE status = 'pending' AND approver_id = ? ORDER BY request_date ASC";
 
-        String query = """
-            SELECT lr.* FROM leave_requests lr 
-            JOIN employees e ON lr.employee_id = e.id 
-            WHERE lr.status = 'pending' AND (
-                (? = 'supervisor' AND e.role = 'pegawai' AND e.divisi = ?) OR
-                (? = 'manajer' AND (e.role = 'supervisor' OR e.role = 'pegawai'))
-            )
-            ORDER BY lr.request_date ASC
-        """;
-        
         try (Connection conn = dbManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
-            
-            pstmt.setString(1, approver.getRole());
-            pstmt.setString(2, approver.getDivisi());
-            pstmt.setString(3, approver.getRole());
+
+            pstmt.setString(1, approverId);
             ResultSet rs = pstmt.executeQuery();
-            
+
             while (rs.next()) {
                 leaveRequests.add(mapResultSetToLeaveRequest(rs));
             }
         } catch (SQLException e) {
             logger.severe("Error getting leave requests for approval: " + e.getMessage());
         }
-        
+
         return leaveRequests;
     }
 
@@ -871,24 +858,51 @@ public class MySQLDataStore {
         LocalDate end = endDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
         int totalDays = (int) ChronoUnit.DAYS.between(start, end) + 1;
 
-        String query = "INSERT INTO leave_requests (employee_id, leave_type, start_date, end_date, total_days, reason) VALUES (?, ?, ?, ?, ?, ?)";
-        
-        try (Connection conn = dbManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
-            
-            java.sql.Date sqlStartDate = new java.sql.Date(startDate.getTime());
-            java.sql.Date sqlEndDate = new java.sql.Date(endDate.getTime());
-            
-            pstmt.setString(1, employeeId);
-            pstmt.setString(2, leaveType);
-            pstmt.setDate(3, sqlStartDate);
-            pstmt.setDate(4, sqlEndDate);
-            pstmt.setInt(5, totalDays);
-            pstmt.setString(6, reason);
-            
-            return pstmt.executeUpdate() > 0;
+        // Get the employee to determine their division and find their supervisor
+        Employee employee = dbManager.getEmployeeById(employeeId);
+        String approverId = null;
+        if (employee != null) {
+            approverId = dbManager.getSupervisorByDivision(employee.getDivisi());
+        }
+
+        // Logging for debugging
+        System.out.println("Attempting to save leave request to database:");
+        System.out.println("Employee ID: " + employeeId);
+        System.out.println("Leave Type: " + leaveType);
+        System.out.println("Start Date: " + startDate);
+        System.out.println("End Date: " + endDate);
+        System.out.println("Total Days: " + totalDays);
+        System.out.println("Reason: " + reason);
+        System.out.println("Approver ID: " + approverId); // Log the determined approver ID
+
+        String query = "INSERT INTO leave_requests (employee_id, leave_type, start_date, end_date, total_days, reason, request_date, approver_id) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(), ?)";
+
+        try (Connection conn = dbManager.getConnection()) {
+            conn.setAutoCommit(false); // Start transaction
+            try (PreparedStatement pstmt = conn.prepareStatement(query)) {
+                java.sql.Date sqlStartDate = new java.sql.Date(startDate.getTime());
+                java.sql.Date sqlEndDate = new java.sql.Date(endDate.getTime());
+
+                pstmt.setString(1, employeeId);
+                pstmt.setString(2, leaveType);
+                pstmt.setDate(3, sqlStartDate);
+                pstmt.setDate(4, sqlEndDate);
+                pstmt.setInt(5, totalDays);
+                pstmt.setString(6, reason);
+                pstmt.setString(7, approverId); // Set the approver_id here
+
+                int result = pstmt.executeUpdate();
+                conn.commit(); // Commit transaction
+                return result > 0;
+            } catch (SQLException e) {
+                conn.rollback(); // Rollback on error
+                logger.severe("Error saving leave request: " + e.getMessage());
+                e.printStackTrace(); // Print full stack trace for detailed debugging
+                return false;
+            }
         } catch (SQLException e) {
-            logger.severe("Error saving leave request: " + e.getMessage());
+            logger.severe("Error managing transaction for saveLeaveRequest: " + e.getMessage());
+            e.printStackTrace(); // Print full stack trace for detailed debugging
             return false;
         }
     }

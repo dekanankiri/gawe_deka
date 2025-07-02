@@ -670,13 +670,21 @@ public class EmployeeDashboard extends Application {
                     Date startSqlDate = java.sql.Date.valueOf(startDate);
                     Date endSqlDate = java.sql.Date.valueOf(endDate);
 
+                    // Logging for debugging
+                    System.out.println("Submitting leave request with the following data:");
+                    System.out.println("Employee ID: " + employee.getId());
+                    System.out.println("Leave Type: " + leaveTypeCombo.getValue());
+                    System.out.println("Start Date: " + startSqlDate);
+                    System.out.println("End Date: " + endSqlDate);
+                    System.out.println("Reason: " + reasonArea.getText());
+
                     boolean success = dataStore.saveLeaveRequest(employee.getId(), leaveTypeCombo.getValue(),
                             startSqlDate, endSqlDate, reasonArea.getText());
                     if (success) {
                         showAlert(Alert.AlertType.INFORMATION, "Success", 
-                                "Leave request submitted successfully!\nIt will be reviewed by " + 
+                                "Leave request submitted successfully!\nIt will be reviewed by " +
                                 (supervisor != null ? supervisor.getNama() : "your supervisor") + ".");
-                        showLeaveRequests(); // Refresh
+                        showLeaveRequests(); // Refresh the leave requests view
                     } else {
                         showAlert(Alert.AlertType.ERROR, "Error", "Failed to submit leave request.");
                     }
