@@ -1070,31 +1070,64 @@ public class MySQLDataStore implements IDataStore {
 
     @Override
     public boolean saveLeaveRequest(String employeeId, String leaveType, Date startDate, Date endDate, String reason) {
-        // Calculate total days
-        LocalDate start = startDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-        LocalDate end = endDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-        int totalDays = (int) ChronoUnit.DAYS.between(start, end) + 1;
-        
-        String query = """
-            INSERT INTO leave_requests (employee_id, leave_type, start_date, end_date, total_days, reason) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        """;
-        
-        try (Connection conn = dbConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
-            
-            pstmt.setString(1, employeeId);
-            pstmt.setString(2, leaveType);
-            pstmt.setDate(3, new java.sql.Date(startDate.getTime()));
-            pstmt.setDate(4, new java.sql.Date(endDate.getTime()));
-            pstmt.setInt(5, totalDays);
-            pstmt.setString(6, reason);
-            
-            int result = pstmt.executeUpdate();
-            logger.info("Leave request saved for employee " + employeeId + ": " + (result > 0 ? "SUCCESS" : "FAILED"));
-            return result > 0;
+        // Calculate total days, excluding weekends
+        LocalDate start = new java.util.Date(startDate.getTime()).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        LocalDate end = new java.util.Date(endDate.getTime()).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        int totalDays = 0;
+        LocalDate currentDate = start;
+        while (!currentDate.isAfter(end)) {
+            if (currentDate.getDayOfWeek() != java.time.DayOfWeek.SATURDAY && currentDate.getDayOfWeek() != java.time.DayOfWeek.SUNDAY) {
+                totalDays++;
+            }
+            currentDate = currentDate.plusDays(1);
+        }
+
+        String insertQuery = """
+        INSERT INTO leave_requests (employee_id, leave_type, start_date, end_date, total_days, reason, status)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending')
+    """;
+
+        String updateEmployeeQuery = "UPDATE employees SET sisa_cuti = sisa_cuti - ? WHERE id = ?";
+
+        try (Connection conn = dbConnection.getConnection()) {
+            conn.setAutoCommit(false); // Start transaction
+
+            try (PreparedStatement insertPstmt = conn.prepareStatement(insertQuery);
+                 PreparedStatement updatePstmt = conn.prepareStatement(updateEmployeeQuery)) {
+
+                // Insert leave request
+                insertPstmt.setString(1, employeeId);
+                insertPstmt.setString(2, leaveType);
+                insertPstmt.setDate(3, new java.sql.Date(startDate.getTime()));
+                insertPstmt.setDate(4, new java.sql.Date(endDate.getTime()));
+                insertPstmt.setInt(5, totalDays);
+                insertPstmt.setString(6, reason);
+                int insertResult = insertPstmt.executeUpdate();
+
+                // Update employee's remaining leave
+                updatePstmt.setInt(1, totalDays);
+                updatePstmt.setString(2, employeeId);
+                int updateResult = updatePstmt.executeUpdate();
+
+                if (insertResult > 0 && updateResult > 0) {
+                    conn.commit(); // Commit transaction
+                    logger.info("Leave request and employee leave balance updated successfully for employee " + employeeId);
+                    return true;
+                } else {
+                    conn.rollback(); // Rollback transaction
+                    logger.warning("Leave request failed, transaction rolled back for employee " + employeeId);
+                    return false;
+                }
+            } catch (SQLException e) {
+                conn.rollback();
+                logger.severe("Error saving leave request: " + e.getMessage());
+                e.printStackTrace();
+                return false;
+            } finally {
+                conn.setAutoCommit(true);
+            }
         } catch (SQLException e) {
-            logger.severe("Error saving leave request: " + e.getMessage());
+            logger.severe("Error managing transaction for leave request: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
